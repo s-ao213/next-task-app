@@ -13,14 +13,14 @@ const EventItem: React.FC<EventItemProps> = ({ event }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <Card type="event" isImportant={event.isImportant} className="mb-4">
+    <Card type="event" isImportant={event.is_important} className="mb-4">
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-medium">{event.title}</h3>
           <p className="text-sm text-gray-600">{event.venue}</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-medium">{formatDateTime(event.dateTime)}</p>
+          <p className="text-sm font-medium">{formatDateTime(event.date_time)}</p>
           {event.duration && (
             <p className="text-xs text-gray-500">所要時間: {event.duration}</p>
           )}

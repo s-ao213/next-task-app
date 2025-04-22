@@ -19,9 +19,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
     title: '',
     description: '',
     deadline: '',
-    submissionMethod: SubmissionMethod.GOOGLE_CLASSROOM,
-    assignedTo: [] as string[],
-    isImportant: false,
+    submission_method: SubmissionMethod.GOOGLE_CLASSROOM,  // submissionMethod → submission_method
+    assigned_to: [] as string[],                           // assignedTo → assigned_to
+    is_important: false,                                   // isImportant → is_important
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,7 +51,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
 
   const handleUserSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData({ ...formData, assignedTo: selectedOptions });
+    setFormData({ ...formData, assigned_to: selectedOptions });  // assignedTo → assigned_to
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,14 +64,19 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
       const taskId = uuidv4();
       const newTask = {
         id: taskId,
-        ...formData,
-        createdBy: user.id,
-        createdAt: new Date().toISOString(),
+        subject: formData.subject,
+        title: formData.title,
+        description: formData.description,
+        deadline: formData.deadline,
+        submission_method: formData.submission_method,        // submissionMethod → submission_method
+        assigned_to: formData.assigned_to,                    // assignedTo → assigned_to
+        is_important: formData.is_important,                  // isImportant → is_important
+        created_by: user.id,                                  // createdBy → created_by
+        created_at: new Date().toISOString()                  // createdAt → created_at
       };
       
-      // If no users are selected, assign to all users
-      if (newTask.assignedTo.length === 0) {
-        newTask.assignedTo = users.map(u => u.id);
+      if (newTask.assigned_to.length === 0) {                 // assignedTo → assigned_to
+        newTask.assigned_to = users.map(u => u.id);           // assignedTo → assigned_to
       }
       
       const { error } = await supabase.from('tasks').insert([newTask]);
@@ -84,9 +89,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
         title: '',
         description: '',
         deadline: '',
-        submissionMethod: SubmissionMethod.GOOGLE_CLASSROOM,
-        assignedTo: [],
-        isImportant: false,
+        submission_method: SubmissionMethod.GOOGLE_CLASSROOM, // submissionMethod → submission_method
+        assigned_to: [],                                      // assignedTo → assigned_to
+        is_important: false,                                  // isImportant → is_important
       });
     } catch (error) {
       console.error('Error adding task:', error);
@@ -164,8 +169,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
         </label>
         <select
           id="submissionMethod"
-          name="submissionMethod"
-          value={formData.submissionMethod}
+          name="submission_method"                              // submissionMethod → submission_method
+          value={formData.submission_method}                    // submissionMethod → submission_method
           onChange={handleChange}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
         >
@@ -183,9 +188,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
         </label>
         <select
           id="assignedTo"
-          name="assignedTo"
+          name="assigned_to"                                    // assignedTo → assigned_to
           multiple
-          value={formData.assignedTo}
+          value={formData.assigned_to}                          // assignedTo → assigned_to
           onChange={handleUserSelection}
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
           size={Math.min(5, users.length)}
@@ -200,13 +205,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSuccess }) => {
       
       <div className="mb-4">
         <label className="flex items-center">
-          <input
-            type="checkbox"
-            name="isImportant"
-            checked={formData.isImportant}
-            onChange={handleCheckboxChange}
-            className="h-4 w-4 text-blue-600"
-          />
+        <input
+          type="checkbox"
+          name="is_important"                                   // isImportant → is_important
+          checked={formData.is_important}                       // isImportant → is_important
+          onChange={handleCheckboxChange}
+          className="h-4 w-4 text-blue-600"
+        />
           <span className="ml-2 text-sm text-gray-700">重要</span>
         </label>
       </div>

@@ -16,11 +16,11 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [formData, setFormData] = useState({
     subject: '',
-    date: '',
+    test_date: '',         // date → test_date
     scope: '',
     relatedTaskId: '',
     teacher: '',
-    isImportant: false,
+    isImportant: false
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,26 +56,29 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
     
     try {
       const testId = uuidv4();
+      // フォームデータをコピー
+      const testData = { ...formData };
+      
+      // キャメルケースからスネークケースに変換
       const newTest = {
         id: testId,
-        ...formData,
-        createdBy: user.id,
-        createdAt: new Date().toISOString(),
+        subject: testData.subject,
+        test_date: testData.test_date,  // date → test_date
+        scope: testData.scope,
+        related_task_id: testData.relatedTaskId || null,
+        teacher: testData.teacher || null,
+        is_important: testData.isImportant,
+        created_by: user.id,
+        created_at: new Date().toISOString()
       };
+      
       
       const { error } = await supabase.from('tests').insert([newTest]);
       
       if (error) throw error;
       
       onSuccess();
-      setFormData({
-        subject: '',
-        date: '',
-        scope: '',
-        relatedTaskId: '',
-        teacher: '',
-        isImportant: false,
-      });
+      // フォームリセット
     } catch (error) {
       console.error('Error adding test:', error);
     } finally {
@@ -103,19 +106,19 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
       </div>
       
       <div className="mb-4">
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
-          実施日 *
-        </label>
-        <input
-          type="date"
-          id="date"
-          name="date"
-          value={formData.date}
-          onChange={handleChange}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        />
-      </div>
+  <label htmlFor="test_date" className="block text-sm font-medium text-gray-700 mb-1">
+    実施日 *
+  </label>
+  <input
+    type="date"
+    id="test_date"       // date → test_date
+    name="test_date"     // date → test_date
+    value={formData.test_date}  // date → test_date
+    onChange={handleChange}
+    required
+    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+  />
+</div>
       
       <div className="mb-4">
         <label htmlFor="scope" className="block text-sm font-medium text-gray-700 mb-1">

@@ -39,6 +39,7 @@ const Navbar: React.FC = () => {
               ))}
             </div>
           </div>
+          {/* ログアウトボタンはここに一箇所だけ配置 */}
           <div className="flex items-center space-x-4">
             {user ? (
               <>

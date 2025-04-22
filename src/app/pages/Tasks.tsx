@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import Layout from '../_components/Layout';
 import TaskForm from '../_components/TaskForm';
 import TaskItem from '../_components/TaskItem';
 import { Task, UserTaskStatus } from '../_types/task';
@@ -33,10 +32,10 @@ const Tasks: React.FC = () => {
     try {
       // Fetch tasks assigned to the user
       const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select('*')
-        .filter('assignedTo', 'cs', `{"${user.id}"}`)
-        .order('deadline', { ascending: true });
+      .from('tasks')
+      .select('*')
+      .filter('assigned_to', 'cs', `{"${user.id}"}`)
+      .order('deadline', { ascending: true });
       
       if (tasksError) throw tasksError;
       
@@ -44,7 +43,7 @@ const Tasks: React.FC = () => {
       const { data: statusData, error: statusError } = await supabase
         .from('user_task_status')
         .select('*')
-        .eq('userId', user.id);
+        .eq('user_id', user.id);
       
       if (statusError) throw statusError;
       
@@ -60,7 +59,7 @@ const Tasks: React.FC = () => {
   const handleTaskStatusChange = (taskId: string, isCompleted: boolean) => {
     setUserTaskStatuses(prev => {
       const existingIndex = prev.findIndex(
-        status => status.userId === user?.id && status.taskId === taskId
+        status => status.user_id === user?.id && status.task_id === taskId
       );
       
       if (existingIndex >= 0) {
@@ -68,7 +67,7 @@ const Tasks: React.FC = () => {
         const updated = [...prev];
         updated[existingIndex] = {
           ...updated[existingIndex],
-          isCompleted
+          is_completed: isCompleted
         };
         return updated;
       } else {
@@ -76,9 +75,9 @@ const Tasks: React.FC = () => {
         return [
           ...prev,
           {
-            userId: user?.id || '',
-            taskId,
-            isCompleted
+            user_id: user?.id || '',
+            task_id: taskId,
+            is_completed: isCompleted
           }
         ];
       }
@@ -87,9 +86,9 @@ const Tasks: React.FC = () => {
 
   const isTaskCompleted = (taskId: string): boolean => {
     const status = userTaskStatuses.find(
-      status => status.userId === user?.id && status.taskId === taskId
+      status => status.user_id === user?.id && status.task_id === taskId
     );
-    return status ? status.isCompleted : false;
+    return status ? status.is_completed : false;
   };
 
   // 教科のフィルターオプションを動的に生成
@@ -123,7 +122,7 @@ const Tasks: React.FC = () => {
     }
     
     // 重要フィルターの適用
-    if (importantFilter.length > 0 && importantFilter.includes('important') && !task.isImportant) {
+    if (importantFilter.length > 0 && importantFilter.includes('important') && !task.is_important) {
       return false;
     }
     
@@ -131,7 +130,6 @@ const Tasks: React.FC = () => {
   });
 
   return (
-    <Layout>
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">課題一覧</h1>
@@ -206,7 +204,6 @@ const Tasks: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

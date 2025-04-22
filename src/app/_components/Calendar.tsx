@@ -101,7 +101,7 @@ const Calendar: React.FC<CalendarProps> = ({ tasks, events, tests, onDateClick }
 
   const getEventsForDate = (events: Event[], date: Date): Event[] => {
     return events.filter(event => {
-      const eventDate = new Date(event.dateTime);
+      const eventDate = new Date(event.date_time);
       return (
         eventDate.getFullYear() === date.getFullYear() &&
         eventDate.getMonth() === date.getMonth() &&
@@ -112,7 +112,7 @@ const Calendar: React.FC<CalendarProps> = ({ tasks, events, tests, onDateClick }
 
   const getTestsForDate = (tests: Test[], date: Date): Test[] => {
     return tests.filter(test => {
-      const testDate = new Date(test.date);
+      const testDate = new Date(test.test_date);
       return (
         testDate.getFullYear() === date.getFullYear() &&
         testDate.getMonth() === date.getMonth() &&

@@ -33,12 +33,12 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Sort events by dateTime
   const sortedEvents = [...events].sort(
-    (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+    (a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()
   );
 
   // Sort tests by date
   const sortedTests = [...tests].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => new Date(a.test_date).getTime() - new Date(b.test_date).getTime()
   );
 
   // Get upcoming tasks (next 7 days)
@@ -56,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Get upcoming events (next 7 days)
   const upcomingEvents = sortedEvents.filter(
     (event) => {
-      const eventDate = new Date(event.dateTime);
+      const eventDate = new Date(event.date_time);
       return eventDate >= now && eventDate <= sevenDaysLater;
     }
   ).slice(0, 3);
@@ -67,7 +67,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const upcomingTests = sortedTests.filter(
     (test) => {
-      const testDate = new Date(test.date);
+      const testDate = new Date(test.test_date);
       return testDate >= now && testDate <= fourteenDaysLater;
     }
   ).slice(0, 3);
@@ -122,7 +122,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </div>
           {upcomingTests.length > 0 ? (
             upcomingTests.map((test) => (
-              <Card key={test.id} type="test" isImportant={test.isImportant} className="mb-4">
+              <Card key={test.id} type="test" isImportant={test.is_important} className="mb-4">
                 <div className="flex justify-between">
                   <div>
                     <h3 className="font-medium">{test.subject}</h3>
@@ -132,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{formatDate(test.date)}</p>
+                    <p className="font-medium">{formatDate(test.test_date)}</p>
                   </div>
                 </div>
               </Card>

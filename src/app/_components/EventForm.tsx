@@ -12,15 +12,16 @@ interface EventFormProps {
 const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
   const { user } = useAuth();
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+// formDataの初期化
   const [formData, setFormData] = useState({
     title: '',
     venue: '',
-    dateTime: '',
+    date_time: '',         // dateTime → date_time
     duration: '',
-    assignedTo: [] as string[],
+    assigned_to: [] as string[],
     description: '',
     items: '',
-    isImportant: false,
+    is_important: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,7 +51,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
 
   const handleUserSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setFormData({ ...formData, assignedTo: selectedOptions });
+    setFormData({ ...formData, assigned_to: selectedOptions });  // assignedTo → assigned_to
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,13 +65,12 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
       const newEvent = {
         id: eventId,
         ...formData,
-        createdBy: user.id,
-        createdAt: new Date().toISOString(),
+        created_by: user.id,        // createdBy → created_by
+        created_at: new Date().toISOString()  // createdAt → created_at
       };
-      
-      // If no users are selected, assign to all users
-      if (newEvent.assignedTo.length === 0) {
-        newEvent.assignedTo = users.map(u => u.id);
+
+      if (newEvent.assigned_to.length === 0) {  // assignedTo → assigned_to
+        newEvent.assigned_to = users.map(u => u.id);  // assignedTo → assigned_to
       }
       
       const { error } = await supabase.from('events').insert([newEvent]);
@@ -81,12 +81,12 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
       setFormData({
         title: '',
         venue: '',
-        dateTime: '',
+        date_time: '',
         duration: '',
-        assignedTo: [],
+        assigned_to: [],  // assignedTo → assigned_to
         description: '',
         items: '',
-        isImportant: false,
+        is_important: false,  // isImportant → is_important
       });
     } catch (error) {
       console.error('Error adding event:', error);
@@ -135,9 +135,9 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
         </label>
         <input
           type="datetime-local"
-          id="dateTime"
-          name="dateTime"
-          value={formData.dateTime}
+          id="date_time"         // dateTime → date_time
+          name="date_time"       // dateTime → date_time
+          value={formData.date_time}
           onChange={handleChange}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -165,12 +165,11 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
         </label>
         <select
           id="assignedTo"
-          name="assignedTo"
+          name="assigned_to"  // assignedTo → assigned_to
           multiple
-          value={formData.assignedTo}
+          value={formData.assigned_to}  // assignedTo → assigned_to
           onChange={handleUserSelection}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          size={Math.min(5, users.length)}
+          className="..."
         >
           {users.map((user) => (
             <option key={user.id} value={user.id}>
@@ -213,7 +212,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
           <input
             type="checkbox"
             name="isImportant"
-            checked={formData.isImportant}
+            checked={formData.is_important}
             onChange={handleCheckboxChange}
             className="h-4 w-4 text-blue-600"
           />

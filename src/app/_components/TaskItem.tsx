@@ -17,22 +17,23 @@ interface TaskItemProps {
 const TaskItem: React.FC<TaskItemProps> = ({ task, isCompleted, userId, onStatusChange }) => {
   const [expanded, setExpanded] = useState(false);
   const daysUntilDeadline = getDaysUntilDeadline(task.deadline);
-  
-  const handleCheckboxChange = async () => {
-    const newStatus = !isCompleted;
-    try {
-      await supabase
-        .from('user_task_status')
-        .upsert({ userId, taskId: task.id, isCompleted: newStatus });
-      
-      onStatusChange(task.id, newStatus);
-    } catch (error) {
-      console.error('Error updating task status:', error);
-    }
-  };
+// user_task_status テーブルへの挿入・更新処理の修正
+
+const handleCheckboxChange = async () => {
+  const newStatus = !isCompleted;
+  try {
+    await supabase
+      .from('user_task_status')
+      .upsert({ user_id: userId, task_id: task.id, is_completed: newStatus });  // カラム名を修正
+    
+    onStatusChange(task.id, newStatus);
+  } catch (error) {
+    console.error('Error updating task status:', error);
+  }
+};
 
   return (
-    <Card type="task" isImportant={task.isImportant} className="mb-4">
+    <Card type="task" isImportant={task.is_important} className="mb-4">
       <div className="flex items-start">
         <input
           type="checkbox"
@@ -87,7 +88,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, isCompleted, userId, onStatus
               )}
               <div className="mb-2">
                 <h4 className="text-sm font-medium text-gray-700">提出方法:</h4>
-                <p className="text-sm text-gray-600">{task.submissionMethod}</p>
+                <p className="text-sm text-gray-600">{task.submission_method}</p>
               </div>
             </div>
           )}

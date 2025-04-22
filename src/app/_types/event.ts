@@ -1,13 +1,13 @@
 export interface Event {
-    id: string;
-    title: string;
-    venue: string;
-    duration?: string;
-    dateTime: string;
-    assignedTo: string[]; // User IDs
-    description?: string;
-    items?: string;
-    isImportant: boolean;
-    createdBy: string;
-    createdAt: string;
-  }
+  id: string;
+  title: string;
+  venue: string;
+  duration?: string;
+  date_time: string;      // dateTime → date_time に修正
+  assigned_to: string[];  
+  description?: string;
+  items?: string;
+  is_important: boolean;
+  created_by: string;
+  created_at: string;
+}

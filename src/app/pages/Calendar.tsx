@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import Layout from '../_components/Layout';
 import Calendar from '../_components/Calendar';
 import { Task } from '../_types/task';
 import { Event } from '../_types/event';
@@ -86,7 +85,7 @@ const CalendarPage: React.FC = () => {
     });
 
     const eventsForDate = events.filter(event => {
-      const eventDate = new Date(event.dateTime);
+      const eventDate = new Date(event.date_time);
       return (
         eventDate.getFullYear() === selectedDate.getFullYear() &&
         eventDate.getMonth() === selectedDate.getMonth() &&
@@ -95,7 +94,7 @@ const CalendarPage: React.FC = () => {
     });
 
     const testsForDate = tests.filter(test => {
-      const testDate = new Date(test.date);
+      const testDate = new Date(test.test_date);
       return (
         testDate.getFullYear() === selectedDate.getFullYear() &&
         testDate.getMonth() === selectedDate.getMonth() &&
@@ -115,7 +114,6 @@ const CalendarPage: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">カレンダー</h1>
         
@@ -162,9 +160,9 @@ const CalendarPage: React.FC = () => {
                                 <div>
                                   <p className="font-medium">{task.subject} - {task.title}</p>
                                   {task.description && <p className="text-sm text-gray-600 mt-1">{task.description}</p>}
-                                  <p className="text-sm text-gray-600 mt-1">提出方法: {task.submissionMethod}</p>
+                                  <p className="text-sm text-gray-600 mt-1">提出方法: {task.submission_method}</p>
                                 </div>
-                                {task.isImportant && (
+                                {task.is_important && (
                                   <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">重要</span>
                                 )}
                               </div>
@@ -190,7 +188,7 @@ const CalendarPage: React.FC = () => {
                                   {event.duration && <p className="text-sm text-gray-600">所要時間: {event.duration}</p>}
                                   {event.description && <p className="text-sm text-gray-600 mt-1">{event.description}</p>}
                                 </div>
-                                {event.isImportant && (
+                                {event.is_important && (
                                   <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">重要</span>
                                 )}
                               </div>
@@ -215,7 +213,7 @@ const CalendarPage: React.FC = () => {
                                   <p className="text-sm text-gray-600 mt-1">範囲: {test.scope}</p>
                                   {test.teacher && <p className="text-sm text-gray-600">担当教員: {test.teacher}</p>}
                                 </div>
-                                {test.isImportant && (
+                                {test.is_important && (
                                   <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">重要</span>
                                 )}
                               </div>
@@ -234,7 +232,6 @@ const CalendarPage: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

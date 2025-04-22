@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../hooks/useAuth';
-import Layout from '../_components/Layout';
+// import Layout from '../_components/Layout';
 import Dashboard from '../_components/Dashboard';
 import { Task } from '../_types/task';
 import { Event } from '../_types/event';
@@ -56,16 +56,15 @@ const DashboardPage: React.FC = () => {
       const { data: statusData, error: statusError } = await supabase
         .from('user_task_status')
         .select('*')
-        .eq('userId', user.id);
-      
+        .eq('user_id', user.id);  // キャメルケースからスネークケースに変更      
       if (statusError) throw statusError;
       
       const statuses: {[key: string]: boolean} = {};
-      if (statusData) {
-        statusData.forEach((status) => {
-          statuses[status.taskId] = status.isCompleted;
-        });
-      }
+if (statusData) {
+  statusData.forEach((status) => {
+    statuses[status.task_id] = status.is_completed;
+  });
+}
       
       setTaskStatuses(statuses);
       
@@ -92,21 +91,20 @@ const DashboardPage: React.FC = () => {
         throw error;
       }
       
-      if (data) {
-        // Update existing record
-        await supabase
-          .from('user_task_status')
-          .update({ isCompleted })
-          .eq('userId', user.id)
-          .eq('taskId', taskId);
-      } else {
-        // Create new record
-        await supabase
-          .from('user_task_status')
-          .insert([
-            { userId: user.id, taskId, isCompleted }
-          ]);
-      }
+// 変更後
+if (data) {
+  await supabase
+    .from('user_task_status')
+    .update({ is_completed: isCompleted })
+    .eq('user_id', user.id)
+    .eq('task_id', taskId);
+} else {
+  await supabase
+    .from('user_task_status')
+    .insert([
+      { user_id: user.id, task_id: taskId, is_completed: isCompleted }
+    ]);
+}
       
       // Update local state
       setTaskStatuses(prev => ({
@@ -120,30 +118,28 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
-        
-        {loading ? (
-          <div className="text-center py-8">
-            <p>読み込み中...</p>
-          </div>
-        ) : user ? (
-          <Dashboard
-            tasks={tasks}
-            events={events}
-            tests={tests}
-            userId={user.id}
-            taskStatuses={taskStatuses}
-            onTaskStatusChange={handleTaskStatusChange}
-          />
-        ) : (
-          <div className="text-center py-8 bg-white rounded-lg shadow">
-            <p>ログインしてください</p>
-          </div>
-        )}
-      </div>
-    </Layout>
+    <div className="container mx-auto px-4 py-6">
+      <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
+      
+      {loading ? (
+        <div className="text-center py-8">
+          <p>読み込み中...</p>
+        </div>
+      ) : user ? (
+        <Dashboard
+          tasks={tasks}
+          events={events}
+          tests={tests}
+          userId={user.id}
+          taskStatuses={taskStatuses}
+          onTaskStatusChange={handleTaskStatusChange}
+        />
+      ) : (
+        <div className="text-center py-8 bg-white rounded-lg shadow">
+          <p>ログインしてください</p>
+        </div>
+      )}
+    </div>
   );
 };
 

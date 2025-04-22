@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Event } from '../_types/event';
-import Layout from '../_components/Layout';
 import EventForm from '../_components/EventForm';
 import { format } from 'date-fns';
 
@@ -11,7 +10,7 @@ const Events: React.FC = () => {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [sortOrder, setSortOrder] = useState<'dateTime' | 'title'>('dateTime');
+  const [sortOrder, setSortOrder] = useState<'date_time' | 'title'>('date_time');
   const [filter, setFilter] = useState({
     title: '',
     venue: '',
@@ -58,12 +57,12 @@ const Events: React.FC = () => {
 
     // Apply importance filter
     if (filter.isImportant) {
-      filtered = filtered.filter(event => event.isImportant);
+      filtered = filtered.filter(event => event.is_important);
     }
 
     // Apply sorting
-    if (sortOrder === 'dateTime') {
-      filtered.sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    if (sortOrder === 'date_time') {
+      filtered.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
     } else if (sortOrder === 'title') {
       filtered.sort((a, b) => a.title.localeCompare(b.title));
     }
@@ -79,7 +78,7 @@ const Events: React.FC = () => {
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortOrder(e.target.value as 'dateTime' | 'title');
+    setSortOrder(e.target.value as 'date_time' | 'title');
   };
 
   const handleFormSuccess = () => {
@@ -88,7 +87,6 @@ const Events: React.FC = () => {
   };
 
   return (
-    <Layout>
       <div className="container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">イベント・行事</h1>
@@ -143,7 +141,7 @@ const Events: React.FC = () => {
                 onChange={handleSortChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
-                <option value="dateTime">日時順</option>
+                <option value="date_time">日時順</option>
                 <option value="title">イベント名順</option>
               </select>
             </div>
@@ -175,11 +173,11 @@ const Events: React.FC = () => {
             {filteredEvents.map(event => (
               <div 
                 key={event.id} 
-                className={`bg-white p-4 rounded-lg shadow ${event.isImportant ? 'border-l-4 border-green-500' : ''}`}
+                className={`bg-white p-4 rounded-lg shadow ${event.is_important ? 'border-l-4 border-green-500' : ''}`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold text-lg">{event.title}</h3>
-                  {event.isImportant && (
+                  {event.is_important && (
                     <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">重要</span>
                   )}
                 </div>
@@ -187,7 +185,7 @@ const Events: React.FC = () => {
                   <span className="font-medium">会場:</span> {event.venue}
                 </p>
                 <p className="text-gray-600 mb-2">
-                  <span className="font-medium">日時:</span> {format(new Date(event.dateTime), 'yyyy/MM/dd HH:mm')}
+                  <span className="font-medium">日時:</span> {format(new Date(event.date_time), 'yyyy/MM/dd HH:mm')}
                 </p>
                 {event.duration && (
                   <p className="text-gray-600 mb-2">
@@ -211,7 +209,6 @@ const Events: React.FC = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 

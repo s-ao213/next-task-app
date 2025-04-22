@@ -8,6 +8,38 @@ export interface User {
   name: string;
 }
 
+// src/app/hooks/useAuth.ts または適切な場所に追加
+const storeUserInDatabase = async (user: SupabaseUser) => {
+  if (!user) return;
+  
+  try {
+    // ユーザーが既に存在するか確認
+    const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .filter('id', 'eq', user.id)
+    .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking user:', error);
+    }
+    
+    // ユーザーが存在しない場合は追加
+    if (!data) {
+      const { error: insertError } = await supabase.from('users').upsert({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || null,
+        created_at: new Date().toISOString()
+      });
+      
+      if (insertError) console.error('Error inserting user:', insertError);
+    }
+  } catch (error) {
+    console.error('Error storing user data:', error);
+  }
+};
+
 // SupabaseのUser型を独自のUser型に変換する関数
 const mapSupabaseUser = (supabaseUser: SupabaseUser | null): User | null => {
   if (!supabaseUser) return null;
@@ -27,7 +59,14 @@ export const useAuth = () => {
     // Check active sessions and sets the user
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      setUser(mapSupabaseUser(session?.user || null));
+      const supabaseUser = session?.user || null;
+      
+      // ここでデータベースにユーザーを保存
+      if (supabaseUser) {
+        await storeUserInDatabase(supabaseUser);
+      }
+      
+      setUser(mapSupabaseUser(supabaseUser));
       setLoading(false);
     };
 
@@ -36,7 +75,14 @@ export const useAuth = () => {
     // Listen for changes on auth state
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(mapSupabaseUser(session?.user || null));
+        const supabaseUser = session?.user || null;
+        
+        // ログイン時にユーザーを保存
+        if (event === 'SIGNED_IN' && supabaseUser) {
+          await storeUserInDatabase(supabaseUser);
+        }
+        
+        setUser(mapSupabaseUser(supabaseUser));
         setLoading(false);
       }
     );
@@ -45,6 +91,8 @@ export const useAuth = () => {
       authListener?.subscription.unsubscribe();
     };
   }, []);
+  
+  // 残りのコードは変更なし
 
   // Sign in with magic link
   const signIn = async (email: string) => {
