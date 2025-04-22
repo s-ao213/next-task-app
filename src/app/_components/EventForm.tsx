@@ -96,9 +96,11 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold mb-4">新しいイベントを追加</h2>
-      
+    <form onSubmit={handleSubmit} className="card overflow-hidden">
+    <div className="card-header bg-gradient-to-r from-green-50 to-white">
+      <h2 className="text-xl font-semibold text-green-700">新しいイベントを追加</h2>
+    </div>
+
       <div className="mb-4">
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
           イベント名 *
@@ -134,14 +136,14 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
           日時（集合時刻） *
         </label>
         <input
-          type="datetime-local"
-          id="date_time"         // dateTime → date_time
-          name="date_time"       // dateTime → date_time
-          value={formData.date_time}
-          onChange={handleChange}
-          required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        />
+            type="datetime-local"
+            id="date_time"         // dateTime → date_time
+            name="date_time"       // dateTime → date_time
+            value={formData.date_time}
+            onChange={handleChange}
+            required
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          />
       </div>
       
       <div className="mb-4">
@@ -220,13 +222,15 @@ const EventForm: React.FC<EventFormProps> = ({ onSuccess }) => {
         </label>
       </div>
       
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full"
-      >
-        {isSubmitting ? '送信中...' : 'イベントを追加'}
-      </Button>
+      <div className="card-footer flex justify-end">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto"
+        >
+          {isSubmitting ? '送信中...' : 'イベントを追加'}
+        </Button>
+      </div>
     </form>
   );
 };

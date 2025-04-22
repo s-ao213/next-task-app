@@ -87,12 +87,15 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-semibold mb-4">新しいテスト・小テストを追加</h2>
-      
-      <div className="mb-4">
-        <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-          教科名 *
+    <form onSubmit={handleSubmit} className="card overflow-hidden">
+    <div className="card-header bg-gradient-to-r from-red-50 to-white">
+      <h2 className="text-xl font-semibold text-red-700">新しいテスト・小テストを追加</h2>
+    </div>
+    
+    <div className="card-body space-y-4">
+      <div>
+        <label htmlFor="subject" className="form-label">
+          教科 <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -101,24 +104,26 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
           value={formData.subject}
           onChange={handleChange}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="form-input"
         />
       </div>
-      
-      <div className="mb-4">
-  <label htmlFor="test_date" className="block text-sm font-medium text-gray-700 mb-1">
-    実施日 *
-  </label>
-  <input
-    type="date"
-    id="test_date"       // date → test_date
-    name="test_date"     // date → test_date
-    value={formData.test_date}  // date → test_date
-    onChange={handleChange}
-    required
-    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-  />
-</div>
+        
+        <div>
+          <label htmlFor="test_date" className="form-label">
+            実施日 <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="date"
+            id="test_date"
+            name="test_date"
+            value={formData.test_date}
+            onChange={handleChange}
+            required
+            className="form-input"
+          />
+        </div>
+      </div>
+
       
       <div className="mb-4">
         <label htmlFor="scope" className="block text-sm font-medium text-gray-700 mb-1">
@@ -182,13 +187,15 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess }) => {
         </label>
       </div>
       
-      <Button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full"
-      >
-        {isSubmitting ? '送信中...' : 'テストを追加'}
-      </Button>
+        <div className="card-footer flex justify-end">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto"
+        >
+          {isSubmitting ? '送信中...' : 'テストを追加'}
+        </Button>
+      </div>
     </form>
   );
 };

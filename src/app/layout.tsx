@@ -1,3 +1,5 @@
+import './globals.css';  // この行が重要です
+
 export const metadata = {
     title: 'Next Task App',
     description: 'タスク管理アプリケーション',

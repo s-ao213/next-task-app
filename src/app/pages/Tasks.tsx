@@ -6,6 +6,8 @@ import { Task, UserTaskStatus } from '../_types/task';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import Filter from '../_components/Filter';
+import { ClipboardList, ClipboardX, Loader2 } from 'lucide-react';
+import Button from '../_components/Button';
 
 const Tasks: React.FC = () => {
   const { user } = useAuth();
@@ -130,29 +132,38 @@ const Tasks: React.FC = () => {
   });
 
   return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">課題一覧</h1>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-          >
-            {showForm ? '閉じる' : '課題を追加'}
-          </button>
+    <div className="container mx-auto px-4 py-6">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="flex items-center">
+          <ClipboardList className="h-8 w-8 text-blue-600 mr-3" />
+          <h1 className="text-2xl md:text-3xl font-bold">課題一覧</h1>
         </div>
         
-        {showForm && (
-          <div className="mb-6">
-            <TaskForm onSuccess={() => {
-              fetchTasks();
-              setShowForm(false);
-            }} />
-          </div>
-        )}
+        <Button
+          onClick={() => setShowForm(!showForm)}
+          variant={showForm ? "secondary" : "primary"}
+          className="w-full sm:w-auto"
+        >
+          {showForm ? '閉じる' : '課題を追加'}
+        </Button>
+      </header>
         
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-3">フィルター</h2>
-          <div className="space-y-4">
+      {showForm && (
+      <div className="mb-6">
+        <TaskForm onSuccess={() => {
+          fetchTasks();
+          setShowForm(false);
+        }} />
+      </div>
+    )}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="lg:col-span-1">
+        <div className="card sticky top-20">
+          <div className="card-header">
+            <h2 className="text-xl font-semibold">フィルター</h2>
+          </div>
+          <div className="card-body space-y-4">
             <Filter
               title="教科"
               options={getSubjectOptions()}
@@ -181,17 +192,23 @@ const Tasks: React.FC = () => {
             />
           </div>
         </div>
+        </div>
+
         
+        <div className="lg:col-span-3">
         {isLoading ? (
-          <div className="text-center py-8">
-            <p>読み込み中...</p>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-gray-500">条件に一致する課題はありません</p>
+          <div className="card p-12 text-center">
+            <div className="mb-4 text-gray-400">
+              <ClipboardX className="h-12 w-12 mx-auto" />
+            </div>
+            <p className="text-lg font-medium text-gray-500">条件に一致する課題はありません</p>
           </div>
         ) : (
-          <div className="mt-6">
+          <div className="space-y-4">
             {filteredTasks.map(task => (
               <TaskItem
                 key={task.id}
@@ -204,6 +221,9 @@ const Tasks: React.FC = () => {
           </div>
         )}
       </div>
+      </div>
+      </div>
+
   );
 };
 
