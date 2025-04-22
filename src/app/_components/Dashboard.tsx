@@ -9,7 +9,7 @@ import TaskItem from './TaskItem';
 import EventItem from './EventItem';
 import Card from './Card';
 import { formatDate } from '../utils/dateUtils';
-import { Calendar, CheckSquare, Award, BookOpen, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
+import { CheckSquare, Award, BookOpen, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
 
 interface DashboardProps {
   tasks: Task[];
