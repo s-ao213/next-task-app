@@ -225,7 +225,8 @@ const Tests: React.FC = () => {
                     onClick={() => toggleNotification(test.id, true)}
                     className="text-sm text-blue-600 hover:underline mr-3"
                   >
-                    通知を受け取る
+                    {/* 通知を受け取る */}
+                    {/* とりあえず通知は放置 */}
                   </button>
                 </div>
               </div>

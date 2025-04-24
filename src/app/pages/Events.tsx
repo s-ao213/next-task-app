@@ -99,9 +99,9 @@ const Events: React.FC = () => {
         </div>
         
         {showForm && (
-          <div className="mb-6">
-            <EventForm onSuccess={handleFormSuccess} />
-          </div>
+            <div className="mb-6">
+              <EventForm onSubmit={handleFormSuccess} />
+            </div>
         )}
         
         <div className="mb-6 bg-white p-4 rounded-lg shadow">

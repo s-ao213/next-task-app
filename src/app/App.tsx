@@ -10,6 +10,8 @@ import Tasks from './pages/Tasks';
 import Events from './pages/Events';
 import Tests from './pages/Tests';
 import Login from './pages/Login';
+import Signup from './pages/Signup'; // この行を追加
+
 import { Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
 
@@ -77,12 +79,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* ログインページ - 認証されていない場合のみアクセス可能 */}
-        <Route 
-          path="/login" 
-          element={!session ? <Login /> : <Navigate to="/" replace />} 
-        />
-
+        <Route path="/login" element={!session ? <Login /> : <Navigate to="/" replace />} />
+        <Route path="/signup" element={!session ? <Signup /> : <Navigate to="/" replace />} />
+        
         {/* 認証が必要なルート - ログインしていない場合はログインページにリダイレクト */}
         <Route 
           path="/*" 
