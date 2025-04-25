@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Task } from '../_types/task';
 import { Event } from '../_types/event';
 import { Test } from '../_types/test';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, BookOpen, PartyPopper, ClipboardList } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarProps {
   tasks: Task[];

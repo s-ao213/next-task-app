@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { Event } from '../_types/event';
 import EventForm from '../_components/EventForm';
@@ -17,28 +17,25 @@ const Events: React.FC = () => {
     isImportant: false,
   });
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [events, filter, sortOrder]);
-
-  const fetchEvents = async () => {
+  // イベントデータを取得する関数を追加
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const { data, error } = await supabase.from('events').select('*');
-      if (error) throw error;
-      if (data) setEvents(data);
+      if (error) {
+        throw error;
+      }
+      if (data) {
+        setEvents(data);
+      }
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('イベント取得エラー:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...events];
 
     // Apply title filter
@@ -68,7 +65,17 @@ const Events: React.FC = () => {
     }
 
     setFilteredEvents(filtered);
-  };
+  }, [events, filter, sortOrder]);
+
+  // 初回ロード時にイベントを取得
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  // フィルターやソート順が変わった時にフィルタリングを適用
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleFilterChange = (filterName: string, value: string | boolean) => {
     setFilter(prev => ({
