@@ -2,8 +2,10 @@
 
 import React from 'react';
 
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger';
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'link';
+  variant?: ButtonVariant;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -19,9 +21,8 @@ const Button: React.FC<ButtonProps> = ({
   const variantClasses = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',
-    destructive: 'btn-destructive',
     outline: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-    link: 'bg-transparent underline text-blue-600 hover:text-blue-800 p-0 shadow-none'
+    danger: 'bg-red-600 hover:bg-red-700 text-white'
   };
   
   const sizeClasses = {

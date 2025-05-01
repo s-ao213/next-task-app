@@ -1,12 +1,12 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import TaskForm from '../_components/TaskForm';
 import TaskItem from '../_components/TaskItem';
 import { Task, UserTaskStatus } from '../_types/task';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../hooks/useAuth';
 import Filter from '../_components/Filter';
-import { ClipboardList, ClipboardX, Loader2, Calendar } from 'lucide-react';
+import { ClipboardList, ClipboardX, Loader2, Calendar, AlertTriangle } from 'lucide-react';
 import Button from '../_components/Button';
 
 const Tasks: React.FC = () => {
@@ -20,7 +20,13 @@ const Tasks: React.FC = () => {
   const [subjectFilter, setSubjectFilter] = useState<string[]>([]);
   const [completionFilter, setCompletionFilter] = useState<string[]>([]);
   const [importantFilter, setImportantFilter] = useState<string[]>([]);
-  const [showExpired, setShowExpired] = useState<boolean>(false); // 期限切れの課題を表示するかどうかのフラグ
+  const [showExpired, setShowExpired] = useState<boolean>(false);
+  
+  // 編集・削除関連の状態
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -28,7 +34,14 @@ const Tasks: React.FC = () => {
     }
   }, [user]);
 
-  const fetchTasks = async () => {
+  // useEffectで期限切れ表示設定が変わったときにタスクを再取得
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+    }
+  }, [showExpired]);
+
+  const fetchTasks = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -68,19 +81,12 @@ const Tasks: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, showExpired]);
 
   // 期限切れの課題表示設定を切り替え
   const toggleExpiredTasks = () => {
     setShowExpired(!showExpired);
   };
-
-  // useEffectで期限切れ表示設定が変わったときにタスクを再取得
-  useEffect(() => {
-    if (user) {
-      fetchTasks();
-    }
-  }, [showExpired]);
 
   const handleTaskStatusChange = (taskId: string, isCompleted: boolean) => {
     setUserTaskStatuses(prev => {
@@ -130,6 +136,75 @@ const Tasks: React.FC = () => {
     }));
   };
 
+  // 編集ボタンがクリックされた時のハンドラー
+  const handleEditClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsEditing(true);
+    setShowForm(true);
+    // ページの上部にスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 削除ボタンがクリックされた時のハンドラー
+  const handleDeleteClick = (taskId: string) => {
+    setDeleteConfirmId(taskId);
+  };
+
+  // タスク削除の確認時のハンドラー
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmId || !user) return;
+    
+    try {
+      setDeleteLoading(true);
+
+      // カスタム関数を呼び出してタスクとその依存関係を削除
+      const { data, error } = await supabase
+        .rpc('delete_task_with_dependencies', {
+          task_id_param: deleteConfirmId
+        });
+      
+      if (error) {
+        console.error('Error deleting task:', error);
+        throw error;
+      }
+      
+      console.log('Delete result:', data);
+      
+      // UI更新
+      setTasks(prev => prev.filter(task => task.id !== deleteConfirmId));
+      setUserTaskStatuses(prev => prev.filter(status => status.task_id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+      
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('タスクの削除に失敗しました。詳細はコンソールを確認してください。');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // フォームの表示/非表示と新規/編集モードの切り替え
+  const handleAddNewClick = () => {
+    if (showForm && isEditing) {
+      // 編集中の場合は新規追加モードに切り替え
+      setSelectedTask(null);
+      setIsEditing(false);
+    } else {
+      // フォームの表示/非表示を切り替え
+      setSelectedTask(null);
+      setIsEditing(false);
+      setShowForm(!showForm);
+    }
+  };
+
+  // フォーム送信成功時のコールバック
+  const handleFormSuccess = () => {
+    setShowForm(false);
+    setSelectedTask(null);
+    setIsEditing(false);
+    fetchTasks();
+  };
+
   const filteredTasks = tasks.filter(task => {
     // 教科フィルターの適用
     if (subjectFilter.length > 0 && !subjectFilter.includes(task.subject)) {
@@ -174,21 +249,59 @@ const Tasks: React.FC = () => {
           </Button>
           
           <Button
-            onClick={() => setShowForm(!showForm)}
+            onClick={handleAddNewClick}
             variant={showForm ? "secondary" : "primary"}
             className="w-full sm:w-auto"
           >
-            {showForm ? '閉じる' : '課題を追加'}
+            {showForm && !isEditing ? '閉じる' : isEditing ? '新規追加に切替' : '課題を追加'}
           </Button>
         </div>
       </header>
       
       {showForm && (
         <div className="mb-6">
-          <TaskForm onSubmit={() => { 
-              fetchTasks();
-            setShowForm(false);
-          }} />
+          <TaskForm 
+            onSubmit={handleFormSuccess} 
+            initialTask={isEditing ? (selectedTask || undefined) : undefined}
+            isEditing={isEditing}
+          />
+        </div>
+      )}
+      
+      {/* 削除確認モーダル */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center text-red-600 mb-4">
+              <AlertTriangle className="mr-2" />
+              <h3 className="text-lg font-bold">課題を削除しますか？</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              この課題を削除すると、関連する全ての情報が完全に削除されます。この操作は元に戻せません。
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button 
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4"
+              >
+                キャンセル
+              </Button>
+              <Button 
+                variant="danger"
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                className="px-4"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    削除中...
+                  </>
+                ) : '削除する'}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
         
@@ -244,13 +357,16 @@ const Tasks: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {filteredTasks.map(task => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  isCompleted={isTaskCompleted(task.id)}
-                  userId={user?.id || ''}
-                  onStatusChange={handleTaskStatusChange}
-                />
+                <div key={task.id}>
+                  <TaskItem
+                    task={task}
+                    isCompleted={isTaskCompleted(task.id)}
+                    userId={user?.id || ''}
+                    onStatusChange={handleTaskStatusChange}
+                    onEdit={() => handleEditClick(task)}
+                    onDelete={() => handleDeleteClick(task.id)}
+                  />
+                </div>
               ))}
             </div>
           )}

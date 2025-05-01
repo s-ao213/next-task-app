@@ -4,6 +4,8 @@ import { supabase } from '../supabaseClient';
 import { Event } from '../_types/event';
 import EventForm from '../_components/EventForm';
 import { format } from 'date-fns';
+import { Loader2, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import Button from '../_components/Button';
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -16,6 +18,12 @@ const Events: React.FC = () => {
     venue: '',
     isImportant: false,
   });
+  
+  // 編集・削除関連の状態
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // イベントデータを取得する関数を追加
   const fetchEvents = useCallback(async () => {
@@ -90,132 +98,255 @@ const Events: React.FC = () => {
 
   const handleFormSuccess = () => {
     setShowForm(false);
+    setSelectedEvent(null);
+    setIsEditing(false);
     fetchEvents();
   };
 
+  // 編集ボタンがクリックされた時のハンドラー
+  const handleEditClick = (event: Event) => {
+    setSelectedEvent(event);
+    setIsEditing(true);
+    setShowForm(true);
+    // ページの上部にスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 削除ボタンがクリックされた時のハンドラー
+  const handleDeleteClick = (eventId: string) => {
+    setDeleteConfirmId(eventId);
+  };
+
+  // イベント削除の確認時のハンドラー
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmId) return;
+    
+    try {
+      setDeleteLoading(true);
+      
+      // イベント自体を削除（通知テーブルの処理はスキップ）
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', deleteConfirmId);
+      
+      if (error) {
+        console.error('イベント削除エラー:', error);
+        throw error;
+      }
+      
+      // 削除が成功したら、リストから削除したイベントを除外
+      setEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
+      
+    } catch (error) {
+      console.error('イベント削除エラー:', error);
+      alert('イベントの削除に失敗しました。');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // フォーム表示/非表示の切り替え
+  const handleAddNewClick = () => {
+    if (showForm && isEditing) {
+      // 編集中の場合は新規追加モードに切り替え
+      setSelectedEvent(null);
+      setIsEditing(false);
+    } else {
+      // フォームの表示/非表示を切り替え
+      setSelectedEvent(null);
+      setIsEditing(false);
+      setShowForm(!showForm);
+    }
+  };
+
   return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">イベント・行事</h1>
-          <button 
-            onClick={() => setShowForm(!showForm)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md"
-          >
-            {showForm ? 'フォームを閉じる' : '新しいイベントを追加'}
-          </button>
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">イベント・行事</h1>
+        <Button
+          onClick={handleAddNewClick}
+          variant={showForm ? "secondary" : "primary"}
+          className="w-full sm:w-auto"
+        >
+          {showForm && !isEditing ? '閉じる' : isEditing ? '新規追加に切替' : '新しいイベントを追加'}
+        </Button>
+      </div>
+      
+      {showForm && (
+        <div className="mb-6">
+          <EventForm 
+            onSubmit={handleFormSuccess} 
+            initialEvent={isEditing ? (selectedEvent ?? undefined) : undefined}
+            isEditing={isEditing}
+          />
         </div>
-        
-        {showForm && (
-            <div className="mb-6">
-              <EventForm onSubmit={handleFormSuccess} />
+      )}
+      
+      {/* 削除確認モーダル */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center text-red-600 mb-4">
+              <AlertTriangle className="mr-2" />
+              <h3 className="text-lg font-bold">イベントを削除しますか？</h3>
             </div>
-        )}
-        
-        <div className="mb-6 bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                イベント名でフィルター
-              </label>
-              <input
-                type="text"
-                value={filter.title}
-                onChange={(e) => handleFilterChange('title', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="イベント名を入力"
-              />
-            </div>
-            
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                会場でフィルター
-              </label>
-              <input
-                type="text"
-                value={filter.venue}
-                onChange={(e) => handleFilterChange('venue', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="会場名を入力"
-              />
-            </div>
-            
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                並び替え
-              </label>
-              <select
-                value={sortOrder}
-                onChange={handleSortChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            <p className="text-gray-600 mb-6">
+              このイベントを削除すると、関連する全ての情報が完全に削除されます。この操作は元に戻せません。
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button 
+                variant="outline"
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4"
               >
-                <option value="date_time">日時順</option>
-                <option value="title">イベント名順</option>
-              </select>
-            </div>
-            
-            <div className="flex items-end">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={filter.isImportant}
-                  onChange={(e) => handleFilterChange('isImportant', e.target.checked)}
-                  className="h-4 w-4 text-green-600"
-                />
-                <span className="ml-2 text-sm text-gray-700">重要なもののみ表示</span>
-              </label>
+                キャンセル
+              </Button>
+              <Button 
+                variant="danger"
+                onClick={handleDeleteConfirm}
+                disabled={deleteLoading}
+                className="px-4"
+              >
+                {deleteLoading ? (
+                  <>
+                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    削除中...
+                  </>
+                ) : '削除する'}
+              </Button>
             </div>
           </div>
         </div>
-        
-        {loading ? (
-          <div className="text-center py-8">
-            <p>読み込み中...</p>
+      )}
+      
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              イベント名でフィルター
+            </label>
+            <input
+              type="text"
+              value={filter.title}
+              onChange={(e) => handleFilterChange('title', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="イベント名を入力"
+            />
           </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-8 bg-white rounded-lg shadow">
-            <p>イベントはありません</p>
+          
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              会場でフィルター
+            </label>
+            <input
+              type="text"
+              value={filter.venue}
+              onChange={(e) => handleFilterChange('venue', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="会場名を入力"
+            />
           </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredEvents.map(event => (
-              <div 
-                key={event.id} 
-                className={`bg-white p-4 rounded-lg shadow ${event.is_important ? 'border-l-4 border-green-500' : ''}`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-lg">{event.title}</h3>
-                  {event.is_important && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">重要</span>
-                  )}
-                </div>
-                <p className="text-gray-600 mb-2">
-                  <span className="font-medium">会場:</span> {event.venue}
-                </p>
-                <p className="text-gray-600 mb-2">
-                  <span className="font-medium">日時:</span> {format(new Date(event.date_time), 'yyyy/MM/dd HH:mm')}
-                </p>
-                {event.duration && (
-                  <p className="text-gray-600 mb-2">
-                    <span className="font-medium">所要時間:</span> {event.duration}
-                  </p>
-                )}
-                {event.description && (
-                  <div className="mb-2">
-                    <p className="font-medium text-gray-700">概要:</p>
-                    <p className="text-gray-600 text-sm">{event.description}</p>
-                  </div>
-                )}
-                {event.items && (
-                  <div className="mb-2">
-                    <p className="font-medium text-gray-700">持ち物・服装:</p>
-                    <p className="text-gray-600 text-sm">{event.items}</p>
-                  </div>
+          
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              並び替え
+            </label>
+            <select
+              value={sortOrder}
+              onChange={handleSortChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="date_time">日時順</option>
+              <option value="title">イベント名順</option>
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={filter.isImportant}
+                onChange={(e) => handleFilterChange('isImportant', e.target.checked)}
+                className="h-4 w-4 text-green-600"
+              />
+              <span className="ml-2 text-sm text-gray-700">重要なもののみ表示</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      {loading ? (
+        <div className="text-center py-8">
+          <Loader2 className="h-8 w-8 text-green-500 animate-spin mx-auto mb-2" />
+          <p>読み込み中...</p>
+        </div>
+      ) : filteredEvents.length === 0 ? (
+        <div className="text-center py-8 bg-white rounded-lg shadow">
+          <p>イベントはありません</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredEvents.map(event => (
+            <div 
+              key={event.id} 
+              className={`bg-white p-4 rounded-lg shadow ${event.is_important ? 'border-l-4 border-green-500' : ''}`}
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="font-semibold text-lg">{event.title}</h3>
+                {event.is_important && (
+                  <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">重要</span>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-gray-600 mb-2">
+                <span className="font-medium">会場:</span> {event.venue}
+              </p>
+              <p className="text-gray-600 mb-2">
+                <span className="font-medium">日時:</span> {format(new Date(event.date_time), 'yyyy/MM/dd HH:mm')}
+              </p>
+              {event.duration && (
+                <p className="text-gray-600 mb-2">
+                  <span className="font-medium">所要時間:</span> {event.duration}
+                </p>
+              )}
+              {event.description && (
+                <div className="mb-2">
+                  <p className="font-medium text-gray-700">概要:</p>
+                  <p className="text-gray-600 text-sm">{event.description}</p>
+                </div>
+              )}
+              {event.items && (
+                <div className="mb-2">
+                  <p className="font-medium text-gray-700">持ち物・服装:</p>
+                  <p className="text-gray-600 text-sm">{event.items}</p>
+                </div>
+              )}
+              
+              <div className="mt-4 border-t pt-3 flex justify-between">
+                <div className="space-x-2">
+                  <button
+                    onClick={() => handleEditClick(event)}
+                    className="text-green-600 hover:text-green-800 p-1"
+                    title="編集"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteClick(event.id)}
+                    className="text-red-600 hover:text-red-800 p-1"
+                    title="削除"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+                {/* 通知設定のボタンも追加できます（実装は後回し） */}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

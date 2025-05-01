@@ -131,7 +131,7 @@ const Login: React.FC = () => {
             
             <div className="relative">
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                パスワード（出席番号）
+                パスワード
               </label>
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-6">
                 <Lock className="h-5 w-5 text-gray-400" />
@@ -145,7 +145,7 @@ const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="appearance-none rounded-md relative block w-full pl-10 px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="パスワード（出席番号）"
+                placeholder="パスワード"
               />
             </div>
           </div>
