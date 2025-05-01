@@ -31,9 +31,13 @@ const Dashboard: React.FC<DashboardProps> = ({
   // 現在日付を取得
   const now = new Date();
   
-  // 期限が過ぎていないタスクをフィルタリング
+  // 期限が過ぎていないタスクをフィルタリング - 修正版
   const activeTasks = tasks.filter(task => {
+    // 期限が未設定または2099年の場合は常に表示対象とする
+    if (!task.deadline || task.deadline.startsWith('2099-')) return true;
+    
     const deadline = new Date(task.deadline);
+    // 期限が過ぎていないか、または完了していないタスクを表示
     return deadline >= now || !taskStatuses[task.id];
   });
   

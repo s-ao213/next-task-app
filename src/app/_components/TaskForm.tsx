@@ -122,25 +122,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         assignedUserId = assignedUser.id;
       }
       
-      // 課題データ作成（必要最低限の情報のみ必須に）
-      const taskData: {
-        title: string;
-        description: string;
-        deadline: string | null;
-        subject: string;
-        submission_method: SubmissionMethod;
-        created_by: string | undefined;
-        assigned_user_id: string | null;
-        is_for_all: boolean;
-        assigned_to: string[];
-        is_important: boolean;
-        created_at?: string;
-      } = {
+      // 課題データ作成部分を修正
+      const taskData = {
         title: title.trim(),
-        description: description.trim(), // 空白でも可
-        deadline: dueDate ? dueDate.toISOString() : null, // null許容
+        description: description.trim(),
+        // 期限が未設定の場合は「期限なし」を表す将来日付を設定
+        deadline: dueDate ? dueDate.toISOString() : '2099-12-31T23:59:59.999Z',
         subject: subject,
-        submission_method: submissionMethod || SubmissionMethod.OTHER, // デフォルト値設定
+        submission_method: submissionMethod || SubmissionMethod.OTHER,
         created_by: user?.id,
         assigned_user_id: assignedUserId,
         is_for_all: assignType === 'all',
@@ -159,7 +148,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
           .eq('id', initialTask.id);
       } else {
         // 新規課題を作成
-        taskData.created_at = new Date().toISOString();
+        taskData.created_by = new Date().toISOString();
         result = await supabase
           .from('tasks')
           .insert([taskData]);

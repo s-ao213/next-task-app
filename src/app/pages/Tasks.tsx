@@ -16,11 +16,17 @@ const Tasks: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
+  // 現在の日時をコンポーネントレベルで定義
+  const now = new Date();
+  
   // フィルター状態
   const [subjectFilter, setSubjectFilter] = useState<string[]>([]);
   const [completionFilter, setCompletionFilter] = useState<string[]>([]);
   const [importantFilter, setImportantFilter] = useState<string[]>([]);
   const [showExpired, setShowExpired] = useState<boolean>(false);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [searchKeyword] = useState<string>('');
+  const [hideCompleted, setHideCompleted] = useState<boolean>(false);
   
   // 編集・削除関連の状態
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -41,14 +47,25 @@ const Tasks: React.FC = () => {
     }
   }, [showExpired]);
 
+  // 教科フィルター変更時の処理
+  useEffect(() => {
+    if (subjectFilter.length === 1) {
+      setSelectedSubject(subjectFilter[0]);
+    } else {
+      setSelectedSubject('');
+    }
+  }, [subjectFilter]);
+
+  // 完了状態フィルター変更時の処理
+  useEffect(() => {
+    setHideCompleted(completionFilter.includes('completed'));
+  }, [completionFilter]);
+
   const fetchTasks = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
     try {
-      // 現在の日付を取得
-      const now = new Date();
-      
       // 自分に割り振られた課題を取得するクエリ
       let query = supabase
         .from('tasks')
@@ -205,29 +222,38 @@ const Tasks: React.FC = () => {
     fetchTasks();
   };
 
+  // ユーザーのタスク状態をマップ形式に変換
+  const taskStatuses = userTaskStatuses.reduce((acc, status) => {
+    if (status.user_id === user?.id) {
+      acc[status.task_id] = status.is_completed;
+    }
+    return acc;
+  }, {} as {[key: string]: boolean});
+
+  // 表示するタスクをフィルタリング - 修正版
   const filteredTasks = tasks.filter(task => {
-    // 教科フィルターの適用
-    if (subjectFilter.length > 0 && !subjectFilter.includes(task.subject)) {
-      return false;
-    }
+    // 基本的なフィルタリング（科目、キーワードなど）
+    const matchesSubject = !selectedSubject || task.subject === selectedSubject;
+    const matchesKeyword = !searchKeyword || 
+      task.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+      (task.description && task.description.toLowerCase().includes(searchKeyword.toLowerCase()));
     
-    // 完了状態フィルターの適用
-    if (completionFilter.length > 0) {
-      const isCompleted = isTaskCompleted(task.id);
-      if (completionFilter.includes('completed') && !isCompleted) {
-        return false;
+    // 期限切れタスクの表示設定
+    let withinDeadline = true;
+    if (!showExpired) {
+      // 期限未設定または2099年の場合は期限内とみなす
+      if (!task.deadline || task.deadline.startsWith('2099-')) {
+        withinDeadline = true;
+      } else {
+        const deadline = new Date(task.deadline);
+        withinDeadline = deadline >= now;
       }
-      if (completionFilter.includes('uncompleted') && isCompleted) {
-        return false;
-      }
     }
     
-    // 重要フィルターの適用
-    if (importantFilter.length > 0 && importantFilter.includes('important') && !task.is_important) {
-      return false;
-    }
+    // 完了済みの表示設定
+    const completionMatch = !hideCompleted || !taskStatuses[task.id];
     
-    return true;
+    return matchesSubject && matchesKeyword && withinDeadline && completionMatch;
   });
 
   return (

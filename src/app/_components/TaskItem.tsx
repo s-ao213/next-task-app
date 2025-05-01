@@ -27,6 +27,31 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const [expanded, setExpanded] = useState(false);
   const daysUntilDeadline = getDaysUntilDeadline(task.deadline);
 
+  // 期限表示部分を修正
+  const isFarFutureDate = (dateStr: string) => {
+    // 2099年の日付かどうかをチェック
+    return dateStr.startsWith('2099-');
+  };
+
+  // 期限の表示をカスタマイズ
+  const renderDeadline = () => {
+    if (!task.deadline) return '期限なし';
+    if (isFarFutureDate(task.deadline)) return '期限なし';
+    
+    return (
+      <>
+        {formatDate(task.deadline)}
+        <span className="text-xs text-gray-500 ml-2">
+          ({daysUntilDeadline < 0
+            ? '期限切れ'
+            : daysUntilDeadline === 0
+            ? '今日'
+            : `あと${daysUntilDeadline}日`})
+        </span>
+      </>
+    );
+  };
+
   // user_task_status テーブルへの挿入・更新処理
   const handleCheckboxChange = async () => {
     const newStatus = !isCompleted;
@@ -164,14 +189,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
             }
             <div>
               <span className={`text-sm font-medium ${colorClasses.text}`}>
-                {formatDate(task.deadline)}
-              </span>
-              <span className="text-xs text-gray-500 ml-2">
-                ({daysUntilDeadline < 0
-                  ? '期限切れ'
-                  : daysUntilDeadline === 0
-                  ? '今日'
-                  : `あと${daysUntilDeadline}日`})
+                {renderDeadline()}
               </span>
             </div>
           </div>
@@ -288,14 +306,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
               <Calendar className="h-3.5 w-3.5 mr-1 text-gray-500" />
             }
             <span className={`text-xs ${colorClasses.text}`}>
-              {formatDate(task.deadline)}
-              <span className="text-xs text-gray-500 ml-1">
-                ({daysUntilDeadline < 0
-                  ? '期限切れ'
-                  : daysUntilDeadline === 0
-                  ? '今日'
-                  : `あと${daysUntilDeadline}日`})
-              </span>
+              {renderDeadline()}
             </span>
           </div>
         </div>
