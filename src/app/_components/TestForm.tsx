@@ -9,6 +9,33 @@ import { Task } from '../_types/task';
 import { Test } from '../_types/test';
 import { Loader2, BookOpen, CalendarCheck, AlertTriangle, ClipboardList, School } from 'lucide-react';
 
+// 科目リストを定義
+const SUBJECTS = [
+  '言語と文化',
+  '現代社会論',
+  '確率統計',
+  '保健体育4',
+  '英語6',
+  '多文化共生',
+  '応用数学A',
+  '応用数学B',
+  '物理学A',
+  '物理学B',
+  '応用専門PBL2',
+  'インターンシップ',
+  '生活と物質',
+  '社会と環境',
+  'アルゴリズムとデータ構造2',
+  '電気電子回路2',
+  'データベース工学',
+  'マルチメディア情報処理',
+  '情報通信ネットワーク',
+  'コンピュータシステム',
+  '知能情報実験実習2 A班',
+  '知能情報実験実習2 B班',
+  'その他'
+];
+
 interface TestFormProps {
   onSuccess: () => void;
   initialTest?: Test;
@@ -18,8 +45,9 @@ interface TestFormProps {
 const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing = false }) => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const initialSubject = initialTest?.subject || '';
   const [formData, setFormData] = useState({
-    subject: initialTest?.subject || '',
+    subject: SUBJECTS.includes(initialSubject) ? initialSubject : '',
     test_date: initialTest?.test_date ? initialTest.test_date.split('T')[0] : '',
     scope: initialTest?.scope || '',
     relatedTaskId: initialTest?.related_task_id || '',
@@ -190,16 +218,21 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <BookOpen className="h-5 w-5 text-gray-400" />
             </div>
-            <input
-              type="text"
+            <select
               id="subject"
               name="subject"
               value={formData.subject}
               onChange={handleChange}
               className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-md bg-white"
-              placeholder="教科名を入力"
               required
-            />
+            >
+              <option value="" disabled>科目を選択してください</option>
+              {SUBJECTS.map((subjectOption) => (
+                <option key={subjectOption} value={subjectOption}>
+                  {subjectOption}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -264,13 +297,28 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
               </option>
             ))}
           </select>
+          
+          {/* 選択された課題があれば、リンク付きで表示 */}
+          {formData.relatedTaskId && (
+            <div className="mt-2 text-sm">
+              <span className="text-gray-600">選択した課題: </span>
+              <a 
+                href={`/tasks?id=${formData.relatedTaskId}`}
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                {tasks.find(task => task.id === formData.relatedTaskId)?.title || ''}
+              </a>
+            </div>
+          )}
         </div>
       </div>
 
       {/* 範囲 - 全幅 */}
       <div className="mb-6">
         <label htmlFor="scope" className="block text-sm font-medium text-gray-700 mb-1">
-          範囲 <span className="text-gray-400 text-xs">(任意)</span>
+          詳細 <span className="text-gray-400 text-xs">(任意)</span>
         </label>
         <textarea
           id="scope"

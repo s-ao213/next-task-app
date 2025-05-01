@@ -11,6 +11,7 @@ import Button from '../_components/Button';
 const Tests: React.FC = () => {
   useAuth();
   const [tests, setTests] = useState<Test[]>([]);
+  const [tasks, setTasks] = useState<{id: string, title: string}[]>([]);
   const [filteredTests, setFilteredTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -35,9 +36,19 @@ const Tests: React.FC = () => {
   const fetchTests = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('tests').select('*');
-      if (error) throw error;
-      if (data) setTests(data);
+      
+      // テストと課題を並行して取得
+      const [testsResponse, tasksResponse] = await Promise.all([
+        supabase.from('tests').select('*'),
+        supabase.from('tasks').select('id, title')
+      ]);
+      
+      if (testsResponse.error) throw testsResponse.error;
+      if (tasksResponse.error) throw tasksResponse.error;
+      
+      setTests(testsResponse.data || []);
+      setTasks(tasksResponse.data || []);
+      setFilteredTests(testsResponse.data || []);
     } catch (error) {
       console.error('Error fetching tests:', error);
     } finally {
@@ -267,7 +278,13 @@ const Tests: React.FC = () => {
               )}
               {test.related_task_id && (
                 <p className="text-gray-600 mb-2">
-                  <span className="font-medium">関連課題:</span> <a href={`/tasks?id=${test.related_task_id}`} className="text-blue-500 hover:underline">リンク</a>
+                  <span className="font-medium">関連課題:</span>{' '}
+                  <a 
+                    href={`/tasks?id=${test.related_task_id}`} 
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {tasks.find(task => task.id === test.related_task_id)?.title || '関連課題'}
+                  </a>
                 </p>
               )}
               <div className="mt-4 border-t pt-3 flex justify-between">

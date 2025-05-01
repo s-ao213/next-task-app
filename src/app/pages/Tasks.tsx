@@ -23,7 +23,7 @@ const Tasks: React.FC = () => {
   const [subjectFilter, setSubjectFilter] = useState<string[]>([]);
   const [completionFilter, setCompletionFilter] = useState<string[]>([]);
   const [importantFilter, setImportantFilter] = useState<string[]>([]);
-  const [showExpired, setShowExpired] = useState<boolean>(false);
+  const [showExpired, setShowExpired] = useState<boolean>(true); // falseからtrueに変更
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [searchKeyword] = useState<string>('');
   const [hideCompleted, setHideCompleted] = useState<boolean>(false);
