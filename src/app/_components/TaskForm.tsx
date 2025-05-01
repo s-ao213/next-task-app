@@ -12,6 +12,33 @@ import { Task as TaskType, SubmissionMethod } from '../_types/task';
 // 日本語ロケールを登録
 registerLocale('ja', ja);
 
+// 科目リストを定義（既存のimportの下に追加）
+const SUBJECTS = [
+  '言語と文化',
+  '現代社会論',
+  '確率統計',
+  '保健体育4',
+  '英語6',
+  '多文化共生',
+  '応用数学A',
+  '応用数学B',
+  '物理学A',
+  '物理学B',
+  '応用専門PBL2',
+  'インターンシップ',
+  '生活と物質',
+  '社会と環境',
+  'アルゴリズムとデータ構造2',
+  '電気電子回路2',
+  'データベース工学',
+  'マルチメディア情報処理',
+  '情報通信ネットワーク',
+  'コンピュータシステム',
+  '知能情報実験実習2 A班',
+  '知能情報実験実習2 B班',
+  'その他'
+];
+
 // 拡張インターフェース
 interface FormTask extends TaskType {
   assigned_user_name?: string;
@@ -33,7 +60,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
   const [dueDate, setDueDate] = useState<Date | null>(
     initialTask?.deadline ? new Date(initialTask.deadline) : null
   );
-  const [subject, setSubject] = useState(initialTask?.subject || '');
+
+  // 初期化値が科目リストにない場合の対応
+  const initialSubject = initialTask?.subject || '';
+  const [subject, setSubject] = useState(
+    SUBJECTS.includes(initialSubject) ? initialSubject : ''
+  );
+
   const [submissionMethod, setSubmissionMethod] = useState<SubmissionMethod>(
     initialTask?.submission_method || SubmissionMethod.GOOGLE_CLASSROOM
   );
@@ -112,31 +145,27 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         throw new Error('タイトルを入力してください');
       }
 
-      if (!subject.trim()) {
-        throw new Error('教科・科目を入力してください');
+      if (!subject) {
+        throw new Error('教科・科目を選択してください');
       }
 
       // 割り当て対象の処理
-      let assignedUserId = null;
-      if (assignType === 'specific' && assignedUser) {
-        assignedUserId = assignedUser.id;
-      }
-      
-      // 課題データ作成部分を修正
-      const taskData = {
+      const taskData: Partial<TaskType> = {
         title: title.trim(),
-        description: description.trim(),
+        description: description.trim() || '', // 空文字列をデフォルト値として設定
         // 期限が未設定の場合は「期限なし」を表す将来日付を設定
         deadline: dueDate ? dueDate.toISOString() : '2099-12-31T23:59:59.999Z',
         subject: subject,
         submission_method: submissionMethod || SubmissionMethod.OTHER,
         created_by: user?.id,
-        assigned_user_id: assignedUserId,
-        is_for_all: assignType === 'all',
+        is_important: isImportant,
+        // assigned_to プロパティを追加（必須フィールド）
         assigned_to: assignType === 'specific' && assignedUser 
-          ? [assignedUser.id]
+          ? [assignedUser.id] 
           : [],
-        is_important: isImportant
+        assigned_user_id: assignType === 'specific' && assignedUser 
+          ? assignedUser.id 
+          : null,
       };
 
       let result;
@@ -148,7 +177,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
           .eq('id', initialTask.id);
       } else {
         // 新規課題を作成
-        taskData.created_by = new Date().toISOString();
+        taskData.created_at = new Date().toISOString(); // created_atに日時を設定
         result = await supabase
           .from('tasks')
           .insert([taskData]);
@@ -163,7 +192,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         setTitle('');
         setDescription('');
         setDueDate(null);
-        setSubject('');
+        setSubject(''); // 空の選択肢に戻す
         setSubmissionMethod(SubmissionMethod.GOOGLE_CLASSROOM);
         setIsImportant(false);
         setAssignType('all');
@@ -217,15 +246,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <BookOpen className="h-5 w-5 text-gray-400" />
             </div>
-            <input
-              type="text"
+            <select
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-md bg-white"
-              placeholder="科目名を入力"
               required
-            />
+            >
+              <option value="" disabled>科目を選択してください</option>
+              {SUBJECTS.map((subjectOption) => (
+                <option key={subjectOption} value={subjectOption}>
+                  {subjectOption}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

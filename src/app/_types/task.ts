@@ -12,11 +12,12 @@ export interface Task {
   title: string;
   description?: string;
   deadline: string;
-  submission_method: SubmissionMethod;  // submissionMethod → submission_method
-  assigned_to: string[];                // assignedTo → assigned_to
-  is_important: boolean;                // is_Important → is_important (大文字の I も修正)
-  created_by: string;                   // createdBy → created_by
-  created_at: string;                   // createdAt → created_at
+  submission_method: SubmissionMethod;
+  assigned_to: string[];                
+  is_important: boolean;                
+  created_by: string;                   
+  created_at: string;
+  assigned_user_id?: string | null;    // このプロパティを追加
 }
 
 export interface UserTaskStatus {
