@@ -227,7 +227,6 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
           />
         </div>
         
-        
         {/* 場所 */}
         <div>
           <label htmlFor="venue" className="block text-sm font-medium text-gray-700 mb-1">
