@@ -98,13 +98,15 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
     setIsSubmitting(true);
 
     try {
+      // 必須項目のみバリデーション
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
 
-      if (!venue.trim()) {
-        throw new Error('場所を入力してください');
-      }
+      // 場所は必須ではなく任意に変更
+      // if (!venue.trim()) {
+      //   throw new Error('場所を入力してください');
+      // }
 
       if (!dateTime) {
         throw new Error('日時を選択してください');
@@ -126,11 +128,11 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
 
       const eventData: EventData = {
         title: title.trim(),
-        venue: venue.trim(),
-        duration: duration.trim() || null,
+        venue: venue.trim() || '未設定', // 場所が空の場合はデフォルト値
+        duration: duration.trim() || null, // 任意
         date_time: dateTime.toISOString(),
-        description: description.trim() || null,
-        items: items.trim() || null,
+        description: description.trim() || null, // 任意
+        items: items.trim() || null, // 任意
         is_important: isImportant,
         created_by: user?.id,
         is_for_all: assignType === 'all',
@@ -228,7 +230,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         {/* 場所 */}
         <div>
           <label htmlFor="venue" className="block text-sm font-medium text-gray-700 mb-1">
-            場所 <span className="text-red-500">*</span>
+            場所 <span className="text-gray-400 text-xs">(任意)</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -241,7 +243,6 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
               onChange={(e) => setVenue(e.target.value)}
               className="focus:ring-purple-500 focus:border-purple-500 block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-md bg-white"
               placeholder="会場・場所を入力"
-              required
             />
           </div>
         </div>
@@ -273,7 +274,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         {/* 所要時間 */}
         <div>
           <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-            所要時間
+            所要時間 <span className="text-gray-400 text-xs">(任意)</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -296,7 +297,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         {/* 詳細 */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            詳細
+            詳細 <span className="text-gray-400 text-xs">(任意)</span>
           </label>
           <textarea
             id="description"
@@ -311,7 +312,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         {/* 持ち物 */}
         <div>
           <label htmlFor="items" className="block text-sm font-medium text-gray-700 mb-1">
-            持ち物・服装等
+            持ち物・服装等 <span className="text-gray-400 text-xs">(任意)</span>
           </label>
           <textarea
             id="items"

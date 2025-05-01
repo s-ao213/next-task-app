@@ -78,7 +78,7 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
     setSuccess(null);
     
     try {
-      // バリデーション
+      // 必須項目のみバリデーション
       if (!formData.subject.trim()) {
         throw new Error('教科を入力してください');
       }
@@ -87,17 +87,18 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
         throw new Error('実施日を選択してください');
       }
       
-      if (!formData.scope.trim()) {
-        throw new Error('テスト範囲を入力してください');
-      }
+      // 範囲は必須ではなく任意に変更
+      // if (!formData.scope.trim()) {
+      //   throw new Error('テスト範囲を入力してください');
+      // }
 
-      // データの準備
+      // データの準備（必須フィールドと任意フィールドを分離）
       const testData = {
         subject: formData.subject,
         test_date: formData.test_date,
-        scope: formData.scope,
-        related_task_id: formData.relatedTaskId || null,
-        teacher: formData.teacher || null,
+        scope: formData.scope.trim() || '未設定', // 空の場合はデフォルト値
+        related_task_id: formData.relatedTaskId || null, // 任意
+        teacher: formData.teacher || null, // 任意
         is_important: formData.isImportant
       };
 
@@ -226,7 +227,7 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
         {/* 担当教員 */}
         <div>
           <label htmlFor="teacher" className="block text-sm font-medium text-gray-700 mb-1">
-            担当教員
+            担当教員 <span className="text-gray-400 text-xs">(任意)</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -269,7 +270,7 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
       {/* 範囲 - 全幅 */}
       <div className="mb-6">
         <label htmlFor="scope" className="block text-sm font-medium text-gray-700 mb-1">
-          範囲 <span className="text-red-500">*</span>
+          範囲 <span className="text-gray-400 text-xs">(任意)</span>
         </label>
         <textarea
           id="scope"

@@ -107,7 +107,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     setIsSubmitting(true);
 
     try {
-      // バリデーション
+      // 最低限必要なバリデーションのみ実施
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
@@ -122,7 +122,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         assignedUserId = assignedUser.id;
       }
       
-      // 課題データ作成
+      // 課題データ作成（必要最低限の情報のみ必須に）
       const taskData: {
         title: string;
         description: string;
@@ -137,10 +137,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         created_at?: string;
       } = {
         title: title.trim(),
-        description: description.trim(),
-        deadline: dueDate ? dueDate.toISOString() : null,
+        description: description.trim(), // 空白でも可
+        deadline: dueDate ? dueDate.toISOString() : null, // null許容
         subject: subject,
-        submission_method: submissionMethod,
+        submission_method: submissionMethod || SubmissionMethod.OTHER, // デフォルト値設定
         created_by: user?.id,
         assigned_user_id: assignedUserId,
         is_for_all: assignType === 'all',
@@ -280,7 +280,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         {/* 提出方法 */}
         <div>
           <label htmlFor="submissionMethod" className="block text-sm font-medium text-gray-700 mb-1">
-            提出方法 <span className="text-red-500">*</span>
+            提出方法
           </label>
           <select
             id="submissionMethod"

@@ -28,65 +28,106 @@ const Dashboard: React.FC<DashboardProps> = ({
   taskStatuses,
   onTaskStatusChange,
 }) => {
-  // Sort tasks by deadline
-  const sortedTasks = [...tasks].sort(
+  // 現在日付を取得
+  const now = new Date();
+  
+  // 期限が過ぎていないタスクをフィルタリング
+  const activeTasks = tasks.filter(task => {
+    const deadline = new Date(task.deadline);
+    return deadline >= now || !taskStatuses[task.id];
+  });
+  
+  // 期限が過ぎていないテストをフィルタリング
+  const activeTests = tests.filter(test => {
+    const testDate = new Date(test.test_date);
+    return testDate >= now;
+  });
+  
+  // 日付が過ぎていないイベントをフィルタリング
+  const activeEvents = events.filter(event => {
+    const eventDate = new Date(event.date_time);
+    return eventDate >= now;
+  });
+
+  // 日付の昇順でソート（近い日付が前に来るようにする）
+  const sortedTasks = [...activeTasks].sort(
     (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
   );
 
-  // Sort events by dateTime
-  const sortedEvents = [...events].sort(
+  // 日付の昇順でソート
+  const sortedEvents = [...activeEvents].sort(
     (a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()
   );
 
-  // Sort tests by date
-  const sortedTests = [...tests].sort(
+  // 日付の昇順でソート
+  const sortedTests = [...activeTests].sort(
     (a, b) => new Date(a.test_date).getTime() - new Date(b.test_date).getTime()
   );
 
-  // Get upcoming tasks (next 7 days)
-  const now = new Date();
-  const sevenDaysLater = new Date();
-  sevenDaysLater.setDate(now.getDate() + 7);
+  // 一番近い期限のタスク
+  const nearestTask = sortedTasks.length > 0 ? sortedTasks[0] : null;
+  
+  // 一番近い日付のイベント
+  const nearestEvent = sortedEvents.length > 0 ? sortedEvents[0] : null;
+  
+  // 一番近い日付のテスト
+  const nearestTest = sortedTests.length > 0 ? sortedTests[0] : null;
 
-  const upcomingTasks = sortedTasks.filter(
-    (task) => {
-      const deadline = new Date(task.deadline);
-      return deadline >= now && deadline <= sevenDaysLater;
-    }
-  ).slice(0, 5);
+  // その他の直近タスク（一番近いもの以外で、特に重要なものがあれば表示）
+  const otherImportantTasks = sortedTasks
+    .slice(1) // 一番目は除外
+    .filter(task => task.is_important) // 重要なものだけ
+    .slice(0, 2); // 最大2つまで
 
-  // Get upcoming events (next 7 days)
-  const upcomingEvents = sortedEvents.filter(
-    (event) => {
-      const eventDate = new Date(event.date_time);
-      return eventDate >= now && eventDate <= sevenDaysLater;
-    }
-  ).slice(0, 3);
+  // その他の直近イベント（一番近いもの以外で、特に重要なものがあれば表示）
+  const otherImportantEvents = sortedEvents
+    .slice(1) // 一番目は除外
+    .filter(event => event.is_important) // 重要なものだけ
+    .slice(0, 1); // 最大1つまで
 
-  // Get upcoming tests (next 14 days)
-  const fourteenDaysLater = new Date();
-  fourteenDaysLater.setDate(now.getDate() + 14);
+  // その他の直近テスト（一番近いもの以外で、特に重要なものがあれば表示）
+  const otherImportantTests = sortedTests
+    .slice(1) // 一番目は除外
+    .filter(test => test.is_important) // 重要なものだけ
+    .slice(0, 1); // 最大1つまで
 
-  const upcomingTests = sortedTests.filter(
-    (test) => {
-      const testDate = new Date(test.test_date);
-      return testDate >= now && testDate <= fourteenDaysLater;
-    }
-  ).slice(0, 3);
+  // Get upcoming tasks for summary
+  const upcomingTasksCount = sortedTasks.filter(task => {
+    const deadline = new Date(task.deadline);
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(now.getDate() + 7);
+    return deadline <= sevenDaysLater;
+  }).length;
+
+  // Get upcoming events for summary
+  const upcomingEventsCount = sortedEvents.filter(event => {
+    const eventDate = new Date(event.date_time);
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(now.getDate() + 7);
+    return eventDate <= sevenDaysLater;
+  }).length;
+
+  // Get upcoming tests for summary
+  const upcomingTestsCount = sortedTests.filter(test => {
+    const testDate = new Date(test.test_date);
+    const fourteenDaysLater = new Date(now);
+    fourteenDaysLater.setDate(now.getDate() + 14);
+    return testDate <= fourteenDaysLater;
+  }).length;
 
   // 締め切りが近い課題を特定
-  const urgentTasks = upcomingTasks.filter(task => {
+  const urgentTasks = sortedTasks.filter(task => {
     const deadline = new Date(task.deadline);
-    const twoDaysLater = new Date();
+    const twoDaysLater = new Date(now);
     twoDaysLater.setDate(now.getDate() + 2);
     return deadline <= twoDaysLater && !taskStatuses[task.id];
   });
 
   // 重要なイベントの数
-  const importantEvents = upcomingEvents.filter(event => event.is_important).length;
+  const importantEvents = sortedEvents.filter(event => event.is_important).length;
   
   // 重要なテストの数
-  const importantTests = upcomingTests.filter(test => test.is_important).length;
+  const importantTests = sortedTests.filter(test => test.is_important).length;
 
   return (
     <div className="space-y-8">
@@ -96,7 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">課題</h3>
-              <p className="text-3xl font-bold mt-2">{upcomingTasks.length}</p>
+              <p className="text-3xl font-bold mt-2">{upcomingTasksCount}</p>
               <p className="text-sm mt-1 opacity-80">直近7日間</p>
             </div>
             <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -117,7 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">イベント</h3>
-              <p className="text-3xl font-bold mt-2">{upcomingEvents.length}</p>
+              <p className="text-3xl font-bold mt-2">{upcomingEventsCount}</p>
               <p className="text-sm mt-1 opacity-80">直近7日間</p>
             </div>
             <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -138,7 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">テスト</h3>
-              <p className="text-3xl font-bold mt-2">{upcomingTests.length}</p>
+              <p className="text-3xl font-bold mt-2">{upcomingTestsCount}</p>
               <p className="text-sm mt-1 opacity-80">直近14日間</p>
             </div>
             <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -169,9 +210,27 @@ const Dashboard: React.FC<DashboardProps> = ({
               <ArrowRight size={16} className="ml-1" />
             </Link>
           </div>
-          {upcomingTasks.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingTasks.map((task) => (
+          
+          {nearestTask ? (
+            <div className="space-y-4">
+              {/* 最も近い課題を強調表示 */}
+              <div className="relative">
+                <div className="absolute -left-2 top-0 bg-blue-500 text-white text-xs px-2 py-1 rounded-md">
+                  最優先
+                </div>
+                <div className="pt-6">
+                  <TaskItem
+                    key={nearestTask.id}
+                    task={nearestTask}
+                    isCompleted={taskStatuses[nearestTask.id] || false}
+                    userId={userId}
+                    onStatusChange={onTaskStatusChange}
+                  />
+                </div>
+              </div>
+              
+              {/* その他の重要な課題 */}
+              {otherImportantTasks.map(task => (
                 <TaskItem
                   key={task.id}
                   task={task}
@@ -180,6 +239,12 @@ const Dashboard: React.FC<DashboardProps> = ({
                   onStatusChange={onTaskStatusChange}
                 />
               ))}
+              
+              {otherImportantTasks.length === 0 && (
+                <div className="text-center py-2 text-sm text-gray-500 mt-2 border-t pt-3">
+                  すべての課題は「課題一覧」で確認できます
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-gray-50 rounded-lg p-6 text-center">
@@ -203,9 +268,21 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <ArrowRight size={16} className="ml-1" />
               </Link>
             </div>
-            {upcomingEvents.length > 0 ? (
+            
+            {nearestEvent ? (
               <div className="space-y-3">
-                {upcomingEvents.map((event) => (
+                {/* 最も近いイベントを強調表示 */}
+                <div className="relative">
+                  <div className="absolute -left-2 top-0 bg-purple-500 text-white text-xs px-2 py-1 rounded-md">
+                    次のイベント
+                  </div>
+                  <div className="pt-6">
+                    <EventItem key={nearestEvent.id} event={nearestEvent} />
+                  </div>
+                </div>
+                
+                {/* その他の重要なイベント */}
+                {otherImportantEvents.map(event => (
                   <EventItem key={event.id} event={event} />
                 ))}
               </div>
@@ -227,9 +304,34 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <ArrowRight size={16} className="ml-1" />
               </Link>
             </div>
-            {upcomingTests.length > 0 ? (
+            
+            {nearestTest ? (
               <div className="space-y-3">
-                {upcomingTests.map((test) => (
+                {/* 最も近いテストを強調表示 */}
+                <div className="relative">
+                  <div className="absolute -left-2 top-0 bg-amber-500 text-white text-xs px-2 py-1 rounded-md">
+                    次のテスト
+                  </div>
+                  <div className="pt-6">
+                    <Card key={nearestTest.id} type="test" isImportant={nearestTest.is_important} className="hover:shadow-md transition-shadow">
+                      <div className="flex justify-between p-1">
+                        <div>
+                          <h3 className="font-medium">{nearestTest.subject}</h3>
+                          <p className="text-sm text-gray-600">範囲: {nearestTest.scope}</p>
+                          {nearestTest.teacher && (
+                            <p className="text-xs text-gray-500 mt-1">担当: {nearestTest.teacher}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-amber-700">{formatDate(nearestTest.test_date)}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+                
+                {/* その他の重要なテスト */}
+                {otherImportantTests.map(test => (
                   <Card key={test.id} type="test" isImportant={test.is_important} className="hover:shadow-md transition-shadow">
                     <div className="flex justify-between p-1">
                       <div>
