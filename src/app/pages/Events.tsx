@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { User } from '@supabase/supabase-js';
 import { Event } from '../_types/event';
 import EventForm from '../_components/EventForm';
 import { format } from 'date-fns';
@@ -8,9 +9,10 @@ import { Loader2, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import Button from '../_components/Button';
 
 const Events: React.FC = () => {
+  const [loading, setLoading] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [sortOrder, setSortOrder] = useState<'date_time' | 'title'>('date_time');
   const [filter, setFilter] = useState({
@@ -25,23 +27,54 @@ const Events: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // イベントデータを取得する関数を追加
-  const fetchEvents = useCallback(async () => {
-    setLoading(true);
+  // events/page.tsxでのイベントフィルタリング処理
+  const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase.from('events').select('*');
-      if (error) {
-        throw error;
-      }
-      if (data) {
-        setEvents(data);
-      }
+      setLoading(true);
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select('*');
+      
+      if (error) throw error;
+
+      // イベントデータ取得直後
+      console.log('取得したイベントデータ:', eventsData);
+      console.log('現在のユーザーID:', user?.id);
+      console.log('フィルタリング条件:', {
+        is_for_all: eventsData.map(e => e.is_for_all),
+        assigned_user_id: eventsData.map(e => e.assigned_user_id),
+        assigned_to: eventsData.map(e => e.assigned_to)
+      });
+      
+      // より厳密なフィルタリング
+      const filteredEvents = eventsData.filter(event => {
+        // 全員向けイベントの場合
+        if (event.is_for_all === true) {
+          return true;
+        }
+
+        // 特定ユーザー向けイベントの場合
+        if (event.assigned_user_id === user?.id) {
+          return true;
+        }
+
+        // assigned_toの配列チェック
+        if (Array.isArray(event.assigned_to) && event.assigned_to.includes(user?.id)) {
+          return true;
+        }
+
+        return false;
+      });
+      
+      setEvents(filteredEvents);
+      console.log('フィルタリング後のイベント:', filteredEvents); // デバッグ用
+
     } catch (error) {
       console.error('イベント取得エラー:', error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   const applyFilters = useCallback(() => {
     let filtered = [...events];
@@ -74,11 +107,15 @@ const Events: React.FC = () => {
 
     setFilteredEvents(filtered);
   }, [events, filter, sortOrder]);
-
-  // 初回ロード時にイベントを取得
+  // 初回ロード時にユーザーとイベントを取得
   useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
     fetchEvents();
-  }, [fetchEvents]);
+  }, []);
 
   // フィルターやソート順が変わった時にフィルタリングを適用
   useEffect(() => {
@@ -351,3 +388,8 @@ const Events: React.FC = () => {
 };
 
 export default Events;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function setLoading(arg0: boolean) {
+  throw new Error('Function not implemented.');
+}
