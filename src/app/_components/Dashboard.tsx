@@ -31,6 +31,13 @@ const Dashboard: React.FC<DashboardProps> = ({
   // 現在日付を取得
   const now = new Date();
   
+  // ユーザーに関連するイベントのみをフィルタリング
+  const userEvents = events.filter(event => 
+    event.is_for_all || 
+    event.assigned_to.includes(userId) ||
+    event.assigned_user_id === userId
+  );
+
   // 期限が過ぎていないタスクをフィルタリング - 修正版
   const activeTasks = tasks.filter(task => {
     // 期限が未設定または2099年の場合は常に表示対象とする
@@ -48,7 +55,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   });
   
   // 日付が過ぎていないイベントをフィルタリング
-  const activeEvents = events.filter(event => {
+  const activeEvents = userEvents.filter(event => {
     const eventDate = new Date(event.date_time);
     return eventDate >= now;
   });

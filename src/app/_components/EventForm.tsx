@@ -123,22 +123,26 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         created_by: string | undefined;
         is_for_all: boolean;
         assigned_to: string[];
+        assigned_user_id: string | null;
         created_at?: string;
       };
 
       const eventData: EventData = {
         title: title.trim(),
-        venue: venue.trim() || '未設定', // 場所が空の場合はデフォルト値
-        duration: duration.trim() || null, // 任意
+        venue: venue.trim() || '未設定', 
+        duration: duration.trim() || null,
         date_time: dateTime.toISOString(),
-        description: description.trim() || null, // 任意
-        items: items.trim() || null, // 任意
+        description: description.trim() || null,
+        items: items.trim() || null, 
         is_important: isImportant,
         created_by: user?.id,
         is_for_all: assignType === 'all',
         assigned_to: assignType === 'specific' && assignedUser 
           ? [assignedUser.id]
-          : []
+          : [],
+        assigned_user_id: assignType === 'specific' && assignedUser 
+          ? assignedUser.id 
+          : null,
       };
 
       let result;

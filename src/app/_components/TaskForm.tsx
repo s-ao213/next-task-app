@@ -159,6 +159,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         submission_method: submissionMethod || SubmissionMethod.OTHER,
         created_by: user?.id,
         is_important: isImportant,
+        is_for_all: assignType === 'all',
         // assigned_to プロパティを追加（必須フィールド）
         assigned_to: assignType === 'specific' && assignedUser 
           ? [assignedUser.id] 

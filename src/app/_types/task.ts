@@ -18,6 +18,7 @@ export interface Task {
   created_by: string;                   
   created_at: string;
   assigned_user_id?: string | null;    // このプロパティを追加
+  is_for_all: boolean;
 }
 
 export interface UserTaskStatus {
