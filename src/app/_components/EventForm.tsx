@@ -138,12 +138,15 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         created_by: user?.id,
         is_for_all: assignType === 'all',
         assigned_to: assignType === 'specific' && assignedUser 
-          ? [assignedUser.id]
-          : [],
+          ? [assignedUser.id] 
+          : [], // ALL の場合は空配列
         assigned_user_id: assignType === 'specific' && assignedUser 
           ? assignedUser.id 
           : null,
       };
+
+      // デバッグ用にコンソールログを追加
+      console.log('保存するイベントデータ:', eventData);
 
       let result;
       if (isEditing && initialEvent?.id) {
@@ -158,7 +161,10 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
           .insert([eventData]);
       }
 
-      if (result.error) throw result.error;
+      if (result.error) {
+        console.error('保存エラー詳細:', result.error);
+        throw new Error(`保存に失敗しました: ${result.error.message || JSON.stringify(result.error)}`);
+      }
       
       setSuccess(isEditing ? 'イベントを更新しました' : '新しいイベントを作成しました');
       
@@ -178,7 +184,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
       onSubmit();
     } catch (err) {
       console.error('イベント保存エラー:', err);
-      setError(err instanceof Error ? err.message : 'イベントの保存中にエラーが発生しました');
+      setError(err instanceof Error ? err.message : `イベントの保存中にエラーが発生しました: ${JSON.stringify(err)}`);
     } finally {
       setIsSubmitting(false);
     }
