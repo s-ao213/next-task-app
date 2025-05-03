@@ -27,8 +27,8 @@ const Events: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // events/page.tsxでのイベントフィルタリング処理
-  const fetchEvents = async () => {
+  // fetchEventsにユーザーIDを渡すように修正
+  const fetchEvents = async (userId: string) => {
     try {
       setLoading(true);
       const { data: eventsData, error } = await supabase
@@ -37,37 +37,31 @@ const Events: React.FC = () => {
       
       if (error) throw error;
 
-      // イベントデータ取得直後
+      // デバッグ用ログ
       console.log('取得したイベントデータ:', eventsData);
-      console.log('現在のユーザーID:', user?.id);
-      console.log('フィルタリング条件:', {
-        is_for_all: eventsData.map(e => e.is_for_all),
-        assigned_user_id: eventsData.map(e => e.assigned_user_id),
-        assigned_to: eventsData.map(e => e.assigned_to)
-      });
+      console.log('現在のユーザーID:', userId);
       
-      // より厳密なフィルタリング
+      // フィルタリングロジックの修正
       const filteredEvents = eventsData.filter(event => {
-        // 全員向けイベントの場合
-        if (event.is_for_all === true) {
-          return true;
-        }
+        const isForAll = event.is_for_all === true;
+        const isAssignedToUser = event.assigned_user_id === userId;
+        const isInAssignedToArray = Array.isArray(event.assigned_to) && event.assigned_to.includes(userId);
+        
+        console.log('イベントのフィルタリング結果:', {
+          eventId: event.id,
+          title: event.title,
+          isForAll,
+          isAssignedToUser,
+          isInAssignedToArray,
+          assigned_to: event.assigned_to,
+          userId
+        });
 
-        // 特定ユーザー向けイベントの場合
-        if (event.assigned_user_id === user?.id) {
-          return true;
-        }
-
-        // assigned_toの配列チェック
-        if (Array.isArray(event.assigned_to) && event.assigned_to.includes(user?.id)) {
-          return true;
-        }
-
-        return false;
+        return isForAll || isAssignedToUser || isInAssignedToArray;
       });
       
       setEvents(filteredEvents);
-      console.log('フィルタリング後のイベント:', filteredEvents); // デバッグ用
+      setFilteredEvents(filteredEvents);
 
     } catch (error) {
       console.error('イベント取得エラー:', error);
@@ -107,14 +101,23 @@ const Events: React.FC = () => {
 
     setFilteredEvents(filtered);
   }, [events, filter, sortOrder]);
-  // 初回ロード時にユーザーとイベントを取得
+
+  // ユーザー情報とイベントの取得を同期させる
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+    const initializeData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        if (user) {
+          // ユーザー情報取得後にイベントを取得
+          await fetchEvents(user.id);
+        }
+      } catch (error) {
+        console.error('初期化エラー:', error);
+      }
     };
-    getUser();
-    fetchEvents();
+    
+    initializeData();
   }, []);
 
   // フィルターやソート順が変わった時にフィルタリングを適用
@@ -133,11 +136,14 @@ const Events: React.FC = () => {
     setSortOrder(e.target.value as 'date_time' | 'title');
   };
 
+  // handleFormSuccessの修正
   const handleFormSuccess = () => {
     setShowForm(false);
     setSelectedEvent(null);
     setIsEditing(false);
-    fetchEvents();
+    if (user) {
+      fetchEvents(user.id);  // ユーザーIDを渡す
+    }
   };
 
   // 編集ボタンがクリックされた時のハンドラー
