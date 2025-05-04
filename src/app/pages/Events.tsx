@@ -31,27 +31,34 @@ const Events: React.FC = () => {
   const fetchEvents = async (userId: string) => {
     try {
       setLoading(true);
+      // デバッグログを追加
+      console.log('イベント取得開始 - ユーザーID:', userId);
+
       const { data: eventsData, error } = await supabase
         .from('events')
         .select('*')
-        // 論理削除されていないイベントのみを取得
-        .is('deleted_at', null);
-      
-      if (error) throw error;
+        .is('deleted_at', null)  // 削除されていないイベントのみ取得
+        .order('date_time', { ascending: true });
 
-      // デバッグ用ログ
+      if (error) {
+        console.error('イベント取得エラー:', error);
+        throw error;
+      }
+
+      // デバッグログを追加
       console.log('取得したイベントデータ:', eventsData);
-      console.log('現在のユーザーID:', userId);
-      
+
       const filteredEvents = eventsData?.filter(event => {
-        // nullチェックを追加
         if (!event) return false;
 
         const isForAll = event.is_for_all === true;
-        const isInAssignedToArray = Array.isArray(event.assigned_to) && event.assigned_to.includes(userId);
-        
+        const isInAssignedToArray = Array.isArray(event.assigned_to) && 
+          event.assigned_to.includes(userId);
+
         return isForAll || isInAssignedToArray;
       }) ?? [];
+
+      console.log('フィルター後のイベント:', filteredEvents);
       
       setEvents(filteredEvents);
       setFilteredEvents(filteredEvents);
@@ -160,22 +167,29 @@ const Events: React.FC = () => {
     
     try {
       setDeleteLoading(true);
-      console.log('削除するイベントID:', deleteConfirmId);
-      
-      // 論理削除を実装
+      console.log('削除開始 - イベントID:', deleteConfirmId);
+
+      // 論理削除の実行
       const { error } = await supabase
         .from('events')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', deleteConfirmId);
-      
+        .update({
+          deleted_at: new Date().toISOString(),
+          // 更新日時も記録
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', deleteConfirmId)
+        .select();
+
       if (error) {
-        console.error('イベント削除エラー詳細:', error);
+        console.error('削除エラー:', error);
         throw error;
       }
-      
-      // UIの更新
-      setEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
-      setFilteredEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
+
+      // 画面の更新
+      if (user) {
+        await fetchEvents(user.id);  // イベント一覧を再取得
+      }
+
       setDeleteConfirmId(null);
       
     } catch (error) {
