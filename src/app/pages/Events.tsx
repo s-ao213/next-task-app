@@ -27,13 +27,15 @@ const Events: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // fetchEventsにユーザーIDを渡すように修正
+  // fetchEventsの修正
   const fetchEvents = async (userId: string) => {
     try {
       setLoading(true);
       const { data: eventsData, error } = await supabase
         .from('events')
-        .select('*');
+        .select('*')
+        // 論理削除されていないイベントのみを取得
+        .is('deleted_at', null);
       
       if (error) throw error;
 
@@ -41,24 +43,15 @@ const Events: React.FC = () => {
       console.log('取得したイベントデータ:', eventsData);
       console.log('現在のユーザーID:', userId);
       
-      // フィルタリングロジックの修正
-      const filteredEvents = eventsData.filter(event => {
+      const filteredEvents = eventsData?.filter(event => {
+        // nullチェックを追加
+        if (!event) return false;
+
         const isForAll = event.is_for_all === true;
-        const isAssignedToUser = event.assigned_user_id === userId;
         const isInAssignedToArray = Array.isArray(event.assigned_to) && event.assigned_to.includes(userId);
         
-        console.log('イベントのフィルタリング結果:', {
-          eventId: event.id,
-          title: event.title,
-          isForAll,
-          isAssignedToUser,
-          isInAssignedToArray,
-          assigned_to: event.assigned_to,
-          userId
-        });
-
-        return isForAll || isAssignedToUser || isInAssignedToArray;
-      });
+        return isForAll || isInAssignedToArray;
+      }) ?? [];
       
       setEvents(filteredEvents);
       setFilteredEvents(filteredEvents);
@@ -161,27 +154,26 @@ const Events: React.FC = () => {
     setDeleteConfirmId(eventId);
   };
 
-  // イベント削除の確認時のハンドラー
+  // handleDeleteConfirmの修正
   const handleDeleteConfirm = async () => {
     if (!deleteConfirmId) return;
     
     try {
       setDeleteLoading(true);
-      
-      // イベントの削除前にデバッグ情報を出力
       console.log('削除するイベントID:', deleteConfirmId);
       
+      // 論理削除を実装
       const { error } = await supabase
         .from('events')
-        .delete()
-        .match({ id: deleteConfirmId });  // .eq() の代わりに .match() を使用
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', deleteConfirmId);
       
       if (error) {
         console.error('イベント削除エラー詳細:', error);
         throw error;
       }
       
-      // 削除が成功したら、リストから削除したイベントを除外
+      // UIの更新
       setEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
       setFilteredEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
       setDeleteConfirmId(null);
