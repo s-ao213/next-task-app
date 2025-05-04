@@ -141,8 +141,10 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         items: items.trim() || null, 
         is_important: isImportant,
         created_by: user?.id,
-        is_for_all: assignType === 'all',
-        assigned_to: assignType === 'specific' 
+        // 特定のユーザーが選択されていない場合は全員向けに設定
+        is_for_all: assignType === 'all' || assignedUsers.length === 0,
+        // 特定のユーザーが選択されている場合のみ assigned_to を設定
+        assigned_to: assignType === 'specific' && assignedUsers.length > 0
           ? assignedUsers.map(user => user.id)
           : [],
         assigned_user_id: null

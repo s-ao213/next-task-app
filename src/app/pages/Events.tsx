@@ -27,39 +27,26 @@ const Events: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // fetchEventsの修正
   const fetchEvents = async (userId: string) => {
     try {
       setLoading(true);
-      // デバッグログを追加
       console.log('イベント取得開始 - ユーザーID:', userId);
 
       const { data: eventsData, error } = await supabase
         .from('events')
         .select('*')
-        .is('deleted_at', null)  // 削除されていないイベントのみ取得
         .order('date_time', { ascending: true });
 
-      if (error) {
-        console.error('イベント取得エラー:', error);
-        throw error;
-      }
-
-      // デバッグログを追加
-      console.log('取得したイベントデータ:', eventsData);
+      if (error) throw error;
 
       const filteredEvents = eventsData?.filter(event => {
         if (!event) return false;
-
-        const isForAll = event.is_for_all === true;
-        const isInAssignedToArray = Array.isArray(event.assigned_to) && 
-          event.assigned_to.includes(userId);
-
-        return isForAll || isInAssignedToArray;
+        
+        // 全員向けまたは特定ユーザーに割り当てられたイベントのみ表示
+        return event.is_for_all || 
+          (Array.isArray(event.assigned_to) && event.assigned_to.includes(userId));
       }) ?? [];
 
-      console.log('フィルター後のイベント:', filteredEvents);
-      
       setEvents(filteredEvents);
       setFilteredEvents(filteredEvents);
 
@@ -157,6 +144,7 @@ const Events: React.FC = () => {
 
   // イベント削除ボタンのクリックハンドラー
   const handleDeleteClick = (eventId: string) => {
+    if (!eventId) return;
     console.log('削除ボタンがクリックされたイベントID:', eventId);
     setDeleteConfirmId(eventId);
   };
@@ -167,34 +155,29 @@ const Events: React.FC = () => {
     
     try {
       setDeleteLoading(true);
-      console.log('削除開始 - イベントID:', deleteConfirmId);
+      console.log('削除するイベントID:', deleteConfirmId);
 
-      // 論理削除の実行
+      // データベースから物理削除を実行
       const { error } = await supabase
         .from('events')
-        .update({
-          deleted_at: new Date().toISOString(),
-          // 更新日時も記録
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', deleteConfirmId)
-        .select();
+        .delete()
+        .match({ id: deleteConfirmId });
 
       if (error) {
         console.error('削除エラー:', error);
         throw error;
       }
 
-      // 画面の更新
-      if (user) {
-        await fetchEvents(user.id);  // イベント一覧を再取得
-      }
-
+      // 削除が成功した場合のみUIを更新
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== deleteConfirmId));
+      setFilteredEvents(prevFiltered => prevFiltered.filter(event => event.id !== deleteConfirmId));
       setDeleteConfirmId(null);
-      
+
+      alert('イベントを削除しました');
+
     } catch (error) {
       console.error('イベント削除エラー:', error);
-      alert('イベントの削除に失敗しました。');
+      alert('イベントの削除に失敗しました');
     } finally {
       setDeleteLoading(false);
     }
