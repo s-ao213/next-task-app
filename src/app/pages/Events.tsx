@@ -157,11 +157,11 @@ const Events: React.FC = () => {
       setDeleteLoading(true);
       console.log('削除するイベントID:', deleteConfirmId);
 
-      // データベースから物理削除を実行
+      // Supabaseからの削除を実行
       const { error } = await supabase
         .from('events')
         .delete()
-        .match({ id: deleteConfirmId });
+        .eq('id', deleteConfirmId); // matchの代わりにeqを使用
 
       if (error) {
         console.error('削除エラー:', error);
