@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const userEvents = events.filter(event => 
     event.is_for_all || 
     event.assigned_to.includes(userId) ||
-    event.assigned_user_id === userId
+    (Array.isArray(event.assigned_user_id) ? event.assigned_user_id.some(user => user.id === userId) : false)
   );
 
   // 期限が過ぎていないタスクをフィルタリング - 修正版

@@ -155,8 +155,9 @@ const Events: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 削除ボタンがクリックされた時のハンドラー
+  // イベント削除ボタンのクリックハンドラー
   const handleDeleteClick = (eventId: string) => {
+    console.log('削除ボタンがクリックされたイベントID:', eventId);
     setDeleteConfirmId(eventId);
   };
 
@@ -167,19 +168,22 @@ const Events: React.FC = () => {
     try {
       setDeleteLoading(true);
       
-      // イベント自体を削除（通知テーブルの処理はスキップ）
+      // イベントの削除前にデバッグ情報を出力
+      console.log('削除するイベントID:', deleteConfirmId);
+      
       const { error } = await supabase
         .from('events')
         .delete()
-        .eq('id', deleteConfirmId);
+        .match({ id: deleteConfirmId });  // .eq() の代わりに .match() を使用
       
       if (error) {
-        console.error('イベント削除エラー:', error);
+        console.error('イベント削除エラー詳細:', error);
         throw error;
       }
       
       // 削除が成功したら、リストから削除したイベントを除外
       setEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
+      setFilteredEvents(prev => prev.filter(event => event.id !== deleteConfirmId));
       setDeleteConfirmId(null);
       
     } catch (error) {
@@ -376,7 +380,7 @@ const Events: React.FC = () => {
                     <Pencil className="h-5 w-5" />
                   </button>
                   <button
-                    onClick={() => handleDeleteClick(event.id)}
+                    onClick={() => event.id && handleDeleteClick(event.id)}
                     className="text-red-600 hover:text-red-800 p-1"
                     title="削除"
                   >
