@@ -173,8 +173,6 @@ const Events: React.FC = () => {
       setFilteredEvents(prevFiltered => prevFiltered.filter(event => event.id !== deleteConfirmId));
       setDeleteConfirmId(null);
 
-      alert('イベントを削除しました');
-
     } catch (error) {
       console.error('イベント削除エラー:', error);
       alert('イベントの削除に失敗しました');
