@@ -33,7 +33,7 @@ const Events: React.FC = () => {
       console.log('イベント取得開始 - ユーザーID:', userId);
 
       const { data: eventsData, error } = await supabase
-        .from('events')
+        .from('active_events')  // eventsの代わりにactive_eventsを使用
         .select('*')
         .order('date_time', { ascending: true });
 
@@ -41,8 +41,6 @@ const Events: React.FC = () => {
 
       const filteredEvents = eventsData?.filter(event => {
         if (!event) return false;
-        
-        // 全員向けまたは特定ユーザーに割り当てられたイベントのみ表示
         return event.is_for_all || 
           (Array.isArray(event.assigned_to) && event.assigned_to.includes(userId));
       }) ?? [];
@@ -157,21 +155,24 @@ const Events: React.FC = () => {
       setDeleteLoading(true);
       console.log('削除するイベントID:', deleteConfirmId);
 
-      // Supabaseからの削除を実行
+      // 物理削除の実行
       const { error } = await supabase
         .from('events')
         .delete()
-        .eq('id', deleteConfirmId); // matchの代わりにeqを使用
+        .eq('id', deleteConfirmId);
 
       if (error) {
         console.error('削除エラー:', error);
         throw error;
       }
 
-      // 削除が成功した場合のみUIを更新
+      // UIの更新
       setEvents(prevEvents => prevEvents.filter(event => event.id !== deleteConfirmId));
       setFilteredEvents(prevFiltered => prevFiltered.filter(event => event.id !== deleteConfirmId));
       setDeleteConfirmId(null);
+      
+      // 成功メッセージ
+      alert('イベントを削除しました');
 
     } catch (error) {
       console.error('イベント削除エラー:', error);
