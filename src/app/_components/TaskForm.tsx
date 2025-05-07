@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import Button from './Button';
 import { useAuth } from '../hooks/useAuth';
-import { Loader2, Calendar, Users, Search, Check, X, BookOpen, AlertTriangle } from 'lucide-react';
+import { Loader2, Calendar, Search, Check, X, BookOpen, AlertTriangle } from 'lucide-react';
 import { ja } from 'date-fns/locale';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -41,8 +41,7 @@ const SUBJECTS = [
 
 // 拡張インターフェース
 interface FormTask extends TaskType {
-  assigned_user_name?: string;
-  assigned_student_id?: string;
+  assigned_users?: Array<{ id: string; name: string }>;
 }
 
 interface TaskFormProps {
@@ -77,21 +76,18 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
   
   // 割り当て関連の状態
   const [assignType, setAssignType] = useState<'all' | 'specific'>(
-    initialTask?.assigned_user_name ? 'specific' : 'all'
+    initialTask?.assigned_users ? 'specific' : 'all'
   );
   const [studentId, setStudentId] = useState('');
-  const [assignedUser, setAssignedUser] = useState<{ id: string, name: string } | null>(
-    initialTask?.assigned_user_name ? {
-      id: initialTask.assigned_user_name,
-      name: initialTask.assigned_user_name || '指定ユーザー'
-    } : null
+  const [assignedUsers, setAssignedUsers] = useState<Array<{ id: string; name: string }>>(
+    initialTask?.assigned_users || []
   );
-  const [studentIdError, setStudentIdError] = useState('');
+  const [, setStudentIdError] = useState('');
   
   // 初回のみ実行する副作用
   useEffect(() => {
-    if (initialTask?.assigned_user_name && initialTask?.assigned_student_id) {
-      setStudentId(initialTask.assigned_student_id);
+    if (initialTask?.assigned_users && initialTask?.assigned_user_id) {
+      setStudentId(initialTask.assigned_user_id);
     }
   }, [initialTask]);
 
@@ -114,22 +110,26 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
       }
       
       if (result.user) {
-        setAssignedUser({
-          id: result.user.id,
-          name: result.user.name
-        });
+        // 既に追加済みのユーザーでないか確認
+        if (!assignedUsers.some(u => u.id === result.user.id)) {
+          setAssignedUsers([...assignedUsers, {
+            id: result.user.id,
+            name: result.user.name
+          }]);
+        }
+        setStudentId(''); // 入力フィールドをクリア
       }
-    } catch {
-      setStudentIdError('ユーザーの検索中にエラーが発生しました');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'ユーザーの検索中にエラーが発生しました';
+      setStudentIdError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 選択されたユーザーをクリア
-  const clearAssignedUser = () => {
-    setAssignedUser(null);
-    setStudentId('');
+  // ユーザー削除処理の追加
+  const removeUser = (userId: string) => {
+    setAssignedUsers(assignedUsers.filter(user => user.id !== userId));
   };
 
   // フォーム送信処理
@@ -160,13 +160,10 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         created_by: user?.id,
         is_important: isImportant,
         is_for_all: assignType === 'all',
-        // assigned_to プロパティを追加（必須フィールド）
-        assigned_to: assignType === 'specific' && assignedUser 
-          ? [assignedUser.id] 
+        assigned_to: assignType === 'specific' && assignedUsers.length > 0
+          ? assignedUsers.map(user => user.id)
           : [],
-        assigned_user_id: assignType === 'specific' && assignedUser 
-          ? assignedUser.id 
-          : null,
+        assigned_user_id: null  // 複数ユーザー対応のため、このフィールドは使用しない
       };
 
       let result;
@@ -198,7 +195,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         setIsImportant(false);
         setAssignType('all');
         setStudentId('');
-        setAssignedUser(null);
+        setAssignedUsers([]);
       }
       
       // 親コンポーネントに通知
@@ -364,7 +361,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
               checked={assignType === 'all'}
               onChange={() => {
                 setAssignType('all');
-                setAssignedUser(null);
+                setAssignedUsers([]);
                 setStudentId('');
               }}
               className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
@@ -385,59 +382,51 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         
         {assignType === 'specific' && (
           <div className="pl-2 border-l-2 border-blue-200 mt-3">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="relative flex-grow">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Users className="h-5 w-5 text-gray-400" />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="出席番号を入力"
+                    className="w-full pl-10 pr-3 py-2 border rounded-md"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="出席番号を入力"
-                  className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-3 py-2 sm:text-sm border border-gray-300 rounded-md bg-white"
-                />
+                <Button
+                  type="button"
+                  onClick={handleStudentIdSearch}
+                  disabled={isSubmitting}
+                  className="whitespace-nowrap"
+                  size="sm"
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4 mr-1" />
+                  )}
+                  <span>検索</span>
+                </Button>
               </div>
               
-              <Button
-                type="button"
-                onClick={handleStudentIdSearch}
-                disabled={isSubmitting}
-                className="whitespace-nowrap"
-                size="sm"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4 mr-1" />
-                )}
-                <span>検索</span>
-              </Button>
-            </div>
-            
-            {studentIdError && (
-              <p className="text-red-500 text-xs mt-1">{studentIdError}</p>
-            )}
-            
-            {assignedUser && (
-              <div className="mt-2 p-2 border rounded bg-green-50">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm">
-                      <span className="font-medium">選択ユーザー:</span> {assignedUser.name}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearAssignedUser}
-                    className="text-gray-500 hover:text-red-500 p-1"
-                    title="選択を解除"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+              {/* 選択されたユーザー一覧 */}
+              {assignedUsers.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {assignedUsers.map(user => (
+                    <div key={user.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <span>{user.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeUser(user.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
