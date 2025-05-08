@@ -215,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* 課題カード */}
         <Link 
           to="/tasks" 
-          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <div>
@@ -240,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* イベントカード */}
         <Link 
           to="/events" 
-          className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+          className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <div>
@@ -265,7 +265,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* テストカード */}
         <Link 
           to="/tests" 
-          className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+          className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <div>
