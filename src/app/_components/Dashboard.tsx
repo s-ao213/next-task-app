@@ -26,29 +26,75 @@ const Dashboard: React.FC<DashboardProps> = ({
   taskStatuses,
   onTaskStatusChange,
 }) => {
-  // 現在日付を取得
   const now = new Date();
   
-  // ユーザーに関連するイベントのみをフィルタリング
-  const userEvents = events.filter(event => 
-    event.is_for_all || 
-    event.assigned_to.includes(userId)
-  );
+  // ユーザーに関連するタスクのみをフィルタリング
+  const userTasks = tasks.filter(task => {
+  // 特定の科目の場合は、そのクラスの学生のみに表示
+  if (task.is_for_all) {
+    if (task.subject === '社会と環境') {
+      const targetIds = ['1', '2', '3', '4', '6', '7', '8', '9', '10',
+        '11', '12', '13', '14', '15', '16', '17', '18', '19',
+        '21', '22', '23', '24', '25', '26', '29', '30',
+        '32', '33', '34', '35'];
+      return targetIds.includes(userId);
+    }
+    if (task.subject === '知能情報実験実習2 A班') {
+      const targetIds = Array.from({length: 17}, (_, i) => (i + 1).toString());
+      return targetIds.includes(userId);
+    }
+    if (task.subject === '知能情報実験実習2 B班') {
+      const targetIds = [...Array.from({length: 18}, (_, i) => (i + 18).toString()), '99'];
+      return targetIds.includes(userId);
+    }
+    if (task.subject === '生活と物質') {
+      const targetIds = ['5', '20', '27', '28', '31', '99'];
+      return targetIds.includes(userId);
+    }
+    // 上記以外の科目で全員向けの場合
+    return true;
+  }
+  // 特定ユーザー向けの課題の場合
+  return task.assigned_to.includes(userId);
+});
 
-  // 期限が過ぎていないタスクをフィルタリング - 修正版
-  const activeTasks = tasks.filter(task => {
-    // 期限が未設定または2099年の場合は常に表示対象とする
-    if (!task.deadline || task.deadline.startsWith('2099-')) return true;
-    
-    const deadline = new Date(task.deadline);
-    // 期限が過ぎていないか、または完了していないタスクを表示
-    return deadline >= now || !taskStatuses[task.id];
+  // ユーザーに関連するイベントのみをフィルタリング
+  const userEvents = events.filter(event => {
+    if (event.is_for_all) return true;
+    return event.assigned_to.includes(userId);
   });
-  
-  // 期限が過ぎていないテストをフィルタリング
-  const activeTests = tests.filter(test => {
-    const testDate = new Date(test.test_date);
-    return testDate >= now;
+
+  // ユーザーに関連するテストのみをフィルタリング
+  const userTests = tests.filter(test => {
+    // 教科に応じたフィルタリング
+    if (test.subject === '社会と環境') {
+      const targetIds = ['1', '2', '3', '4', '6', '7', '8', '9', '10',
+        '11', '12', '13', '14', '15', '16', '17', '18', '19',
+        '21', '22', '23', '24', '25', '26', '29', '30',
+        '32', '33', '34', '35'];
+      return targetIds.includes(userId);
+    }
+    if (test.subject === '知能情報実験実習2 A班') {
+      const targetIds = Array.from({length: 17}, (_, i) => (i + 1).toString());
+      return targetIds.includes(userId);
+    }
+    if (test.subject === '知能情報実験実習2 B班') {
+      const targetIds = [...Array.from({length: 18}, (_, i) => (i + 18).toString()), '99'];
+      return targetIds.includes(userId);
+    }
+    if (test.subject === '生活と物質') {
+      const targetIds = ['5', '20', '27', '28', '31', '99'];
+      return targetIds.includes(userId);
+    }
+    // その他の科目は全員に表示
+    return true;
+  });
+
+  // 期限が過ぎていないタスクをフィルタリング
+  const activeTasks = userTasks.filter(task => {
+    if (!task.deadline || task.deadline.startsWith('2099-')) return true;
+    const deadline = new Date(task.deadline);
+    return deadline >= now || !taskStatuses[task.id];
   });
   
   // 日付が過ぎていないイベントをフィルタリング
@@ -57,17 +103,21 @@ const Dashboard: React.FC<DashboardProps> = ({
     return eventDate >= now;
   });
 
-  // 日付の昇順でソート（近い日付が前に来るようにする）
+  // 期限が過ぎていないテストをフィルタリング
+  const activeTests = userTests.filter(test => {
+    const testDate = new Date(test.test_date);
+    return testDate >= now;
+  });
+
+  // 日付の昇順でソート
   const sortedTasks = [...activeTasks].sort(
     (a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
   );
 
-  // 日付の昇順でソート
   const sortedEvents = [...activeEvents].sort(
     (a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime()
   );
 
-  // 日付の昇順でソート
   const sortedTests = [...activeTests].sort(
     (a, b) => new Date(a.test_date).getTime() - new Date(b.test_date).getTime()
   );
