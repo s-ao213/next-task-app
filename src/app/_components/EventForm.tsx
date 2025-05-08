@@ -56,7 +56,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
 
   // 選択されたユーザーの配列を管理
   const [assignedUsers, setAssignedUsers] = useState<Array<{ id: string, name: string }>>(
-    initialEvent?.assigned_user_id || []
+    initialEvent?.assigned_to ? initialEvent.assigned_to.map(id => ({ id, name: id })) : []
   );
 
   // 出席番号からユーザーを検索
