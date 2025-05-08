@@ -140,7 +140,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     setIsSubmitting(true);
 
     try {
-      // バリデーション
+      // バリデーションを順番に実行
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
@@ -149,11 +149,59 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         throw new Error('教科・科目を選択してください');
       }
 
-      if (!user) {
-        throw new Error('ユーザー情報が取得できません');
+      // ユーザー情報の確認を最初に行う
+      if (!user?.id) {
+        setError('ユーザー情報が取得できません。再度ログインしてください。');
+        return;
       }
 
-      // テーブルのカラムに合わせたデータ構造
+      let assignedUserIds: string[] = [];
+
+      if (assignType === 'all') {
+        let targetStudentIds: string[] = [];
+        
+        // 科目に応じて対象学生の出席番号を設定
+        if (subject === '社会と環境') {
+          targetStudentIds = [
+            '1', '2', '3', '4', '6', '7', '8', '9', '10',
+            '11', '12', '13', '14', '15', '16', '17', '18', '19',
+            '21', '22', '23', '24', '25', '26', '29', '30',
+            '32', '33', '34', '35'
+          ];
+        } else if (subject === '知能情報実験実習2 A班') {
+          targetStudentIds = Array.from({length: 17}, (_, i) => (i + 1).toString());
+        } else if (subject === '知能情報実験実習2 B班') {
+          targetStudentIds = [
+            ...Array.from({length: 18}, (_, i) => (i + 18).toString()),
+            '99'
+          ];
+        } else if (subject === '生活と物質') {
+          targetStudentIds = ['5', '20', '27', '28', '31', '99'];
+        }
+
+        try {
+          // 対象学生の一括取得
+          if (targetStudentIds.length > 0) {
+            const { data: users, error } = await supabase
+              .from('users')
+              .select('id')
+              .in('student_id', targetStudentIds);
+
+            if (error) throw error;
+            if (users) {
+              assignedUserIds = users.map(user => user.id);
+            }
+          }
+        } catch (error) {
+          console.error('ユーザー取得エラー:', error);
+          throw new Error('対象ユーザーの取得に失敗しました');
+        }
+      } else {
+        // 特定のユーザーが選択された場合
+        assignedUserIds = assignedUsers.map(u => u.id);
+      }
+
+      // タスクデータの作成
       const taskData = {
         title: title.trim(),
         description: description.trim() || null,
@@ -162,8 +210,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         submission_method: submissionMethod,
         created_by: user.id,
         is_important: isImportant,
-        is_for_all: assignType === 'all',
-        assigned_to: assignType === 'specific' ? assignedUsers.map(u => u.id) : [],
+        is_for_all: assignType === 'all' && !['社会と環境', '知能情報実験実習2 A班', '知能情報実験実習2 B班'].includes(subject),
+        assigned_to: assignedUserIds,
         created_at: new Date().toISOString()
       };
 
@@ -172,15 +220,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         result = await supabase
           .from('tasks')
           .update(taskData)
-          .eq('id', initialTask.id)
-          .select('*')  // レスポンスに結果を含める
-          .single();
+          .eq('id', initialTask.id);
       } else {
         result = await supabase
           .from('tasks')
-          .insert([taskData])
-          .select('*')  // レスポンスに結果を含める
-          .single();
+          .insert([taskData]);
       }
 
       if (result.error) throw result.error;
