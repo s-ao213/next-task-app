@@ -26,7 +26,7 @@ const Tasks: React.FC = () => {
   const [showExpired, setShowExpired] = useState<boolean>(true); // falseからtrueに変更
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [searchKeyword] = useState<string>('');
-  const [hideCompleted, setHideCompleted] = useState<boolean>(false);
+  const [, setHideCompleted] = useState<boolean>(false);
   
   // 編集・削除関連の状態
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -232,13 +232,19 @@ const Tasks: React.FC = () => {
 
   // 表示するタスクをフィルタリング - 修正版
   const filteredTasks = tasks.filter(task => {
-    // 基本的なフィルタリング（科目、キーワードなど）
+    // 基本的なフィルタリング（科目、キーワード）
     const matchesSubject = !selectedSubject || task.subject === selectedSubject;
     const matchesKeyword = !searchKeyword || 
       task.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchKeyword.toLowerCase()));
-    
-    // 期限切れタスクの表示設定
+
+    // 完了状態のフィルタリング
+    const isTaskCompleted = taskStatuses[task.id] || false;
+    const matchesCompletionFilter = completionFilter.length === 0 || 
+      (completionFilter.includes('completed') && isTaskCompleted) ||
+      (completionFilter.includes('uncompleted') && !isTaskCompleted);
+
+    // 期限切れの表示設定
     let withinDeadline = true;
     if (!showExpired) {
       // 期限未設定または2099年の場合は期限内とみなす
@@ -249,11 +255,16 @@ const Tasks: React.FC = () => {
         withinDeadline = deadline >= now;
       }
     }
-    
-    // 完了済みの表示設定
-    const completionMatch = !hideCompleted || !taskStatuses[task.id];
-    
-    return matchesSubject && matchesKeyword && withinDeadline && completionMatch;
+
+    // 重要度フィルター
+    const matchesImportance = importantFilter.length === 0 || 
+      (importantFilter.includes('important') && task.is_important);
+
+    return matchesSubject && 
+           matchesKeyword && 
+           matchesCompletionFilter && 
+           withinDeadline && 
+           matchesImportance;
   });
 
   return (
@@ -348,11 +359,12 @@ const Tasks: React.FC = () => {
               <Filter
                 title="完了状態"
                 options={[
-                  { value: 'completed', label: '完了済み' },
-                  { value: 'uncompleted', label: '未完了' }
+                  { value: 'completed', label: '完了済みのみ' },
+                  { value: 'uncompleted', label: '未完了のみ' }
                 ]}
                 selectedValues={completionFilter}
                 onChange={setCompletionFilter}
+                multiSelect={false} // 単一選択に変更
               />
               
               <Filter

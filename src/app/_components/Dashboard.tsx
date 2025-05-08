@@ -6,10 +6,8 @@ import { Task } from '../_types/task';
 import { Event } from '../_types/event';
 import { Test } from '../_types/test';
 import TaskItem from './TaskItem';
-import EventItem from './EventItem';
-import Card from './Card';
 import { formatDate } from '../utils/dateUtils';
-import { CheckSquare, Award, BookOpen, ArrowRight, Clock, AlertTriangle } from 'lucide-react';
+import { CheckSquare, Award, BookOpen, ArrowRight, Clock, AlertTriangle, MapPin, Calendar, Book, User } from 'lucide-react';
 
 interface DashboardProps {
   tasks: Task[];
@@ -140,11 +138,85 @@ const Dashboard: React.FC<DashboardProps> = ({
   // 重要なテストの数
   const importantTests = sortedTests.filter(test => test.is_important).length;
 
+  // イベント表示部分の修正
+  const EventSection = ({ event }: { event: Event }) => (
+    <div className="p-4 bg-gradient-to-r from-purple-50 to-white border border-purple-100 rounded-lg hover:shadow-md transition-all duration-200">
+      <div className="flex justify-between items-start">
+        <div className="space-y-2">
+          <h3 className="font-medium text-lg text-purple-800">{event.title}</h3>
+          <div className="space-y-1">
+            <p className="text-sm text-gray-600 flex items-center">
+              <Calendar className="h-4 w-4 text-purple-500 mr-2" />
+              {formatDate(event.date_time)}
+              {event.duration && (
+                <span className="ml-2 text-purple-600 text-xs">
+                  ({event.duration})
+                </span>
+              )}
+            </p>
+            <p className="text-sm text-gray-600 flex items-center">
+              <MapPin className="h-4 w-4 text-purple-500 mr-2" />
+              {event.venue}
+            </p>
+          </div>
+        </div>
+        {event.is_important && (
+          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
+            重要
+          </span>
+        )}
+      </div>
+      {event.description && (
+        <p className="mt-3 pt-3 text-sm text-gray-600 border-t border-purple-100">
+          {event.description}
+        </p>
+      )}
+    </div>
+  );
+
+  // テスト表示部分の修正
+  const TestSection = ({ test }: { test: Test }) => (
+    <div className="p-4 bg-gradient-to-r from-amber-50 to-white border border-amber-100 rounded-lg hover:shadow-md transition-all duration-200">
+      <div className="flex justify-between items-start">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-lg text-amber-800">{test.subject}</h3>
+            {test.is_important && (
+              <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
+                重要
+              </span>
+            )}
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm text-gray-600 flex items-center">
+              <Calendar className="h-4 w-4 text-amber-500 mr-2" />
+              {formatDate(test.test_date)}
+            </p>
+            <p className="text-sm text-gray-600 flex items-center">
+              <Book className="h-4 w-4 text-amber-500 mr-2" />
+              範囲: {test.scope}
+            </p>
+            {test.teacher && (
+              <p className="text-sm text-gray-600 flex items-center">
+                <User className="h-4 w-4 text-amber-500 mr-2" />
+                担当: {test.teacher}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       {/* サマリーカード */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-5 text-white">
+        {/* 課題カード */}
+        <Link 
+          to="/tasks" 
+          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+        >
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">課題</h3>
@@ -155,17 +227,21 @@ const Dashboard: React.FC<DashboardProps> = ({
               <CheckSquare size={24} />
             </div>
           </div>
-          <div className="mt-4">
-            {urgentTasks.length > 0 && (
+          {urgentTasks.length > 0 && (
+            <div className="mt-4">
               <div className="flex items-center gap-2 bg-red-500 bg-opacity-30 px-3 py-1.5 rounded-full">
                 <AlertTriangle size={16} />
                 <span className="text-sm">{urgentTasks.length}件の急ぎの課題</span>
               </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg p-5 text-white">
+            </div>
+          )}
+        </Link>
+
+        {/* イベントカード */}
+        <Link 
+          to="/events" 
+          className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+        >
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">イベント</h3>
@@ -176,17 +252,21 @@ const Dashboard: React.FC<DashboardProps> = ({
               <Award size={24} />
             </div>
           </div>
-          <div className="mt-4">
-            {importantEvents > 0 && (
+          {importantEvents > 0 && (
+            <div className="mt-4">
               <div className="flex items-center gap-2 bg-yellow-500 bg-opacity-30 px-3 py-1.5 rounded-full">
                 <Clock size={16} />
                 <span className="text-sm">{importantEvents}件の重要イベント</span>
               </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-5 text-white">
+            </div>
+          )}
+        </Link>
+
+        {/* テストカード */}
+        <Link 
+          to="/tests" 
+          className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow"
+        >
           <div className="flex justify-between items-start">
             <div>
               <h3 className="text-lg font-medium opacity-90">テスト</h3>
@@ -197,15 +277,15 @@ const Dashboard: React.FC<DashboardProps> = ({
               <BookOpen size={24} />
             </div>
           </div>
-          <div className="mt-4">
-            {importantTests > 0 && (
+          {importantTests > 0 && (
+            <div className="mt-4">
               <div className="flex items-center gap-2 bg-red-500 bg-opacity-30 px-3 py-1.5 rounded-full">
                 <AlertTriangle size={16} />
                 <span className="text-sm">{importantTests}件の重要テスト</span>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </Link>
       </div>
 
       {/* メインコンテンツ */}
@@ -288,13 +368,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                     次のイベント
                   </div>
                   <div className="pt-6">
-                    <EventItem key={nearestEvent.id} event={nearestEvent} />
+                    <EventSection event={nearestEvent} />
                   </div>
                 </div>
                 
                 {/* その他の重要なイベント */}
                 {otherImportantEvents.map(event => (
-                  <EventItem key={event.id} event={event} />
+                  <EventSection key={event.id} event={event} />
                 ))}
               </div>
             ) : (
@@ -324,39 +404,13 @@ const Dashboard: React.FC<DashboardProps> = ({
                     次のテスト
                   </div>
                   <div className="pt-6">
-                    <Card key={nearestTest.id} type="test" isImportant={nearestTest.is_important} className="hover:shadow-md transition-shadow">
-                      <div className="flex justify-between p-1">
-                        <div>
-                          <h3 className="font-medium">{nearestTest.subject}</h3>
-                          <p className="text-sm text-gray-600">範囲: {nearestTest.scope}</p>
-                          {nearestTest.teacher && (
-                            <p className="text-xs text-gray-500 mt-1">担当: {nearestTest.teacher}</p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-amber-700">{formatDate(nearestTest.test_date)}</p>
-                        </div>
-                      </div>
-                    </Card>
+                    <TestSection test={nearestTest} />
                   </div>
                 </div>
                 
                 {/* その他の重要なテスト */}
                 {otherImportantTests.map(test => (
-                  <Card key={test.id} type="test" isImportant={test.is_important} className="hover:shadow-md transition-shadow">
-                    <div className="flex justify-between p-1">
-                      <div>
-                        <h3 className="font-medium">{test.subject}</h3>
-                        <p className="text-sm text-gray-600">範囲: {test.scope}</p>
-                        {test.teacher && (
-                          <p className="text-xs text-gray-500 mt-1">担当: {test.teacher}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-amber-700">{formatDate(test.test_date)}</p>
-                      </div>
-                    </div>
-                  </Card>
+                  <TestSection key={test.id} test={test} />
                 ))}
               </div>
             ) : (

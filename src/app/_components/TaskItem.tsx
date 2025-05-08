@@ -66,12 +66,29 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
   };
 
-  // 期限の状態を判断するヘルパー関数
+  // 期限の状態を判断するヘルパー関数を修正
   const getDeadlineStatus = () => {
-    if (daysUntilDeadline < 0) return 'expired'; // 期限切れ
-    if (daysUntilDeadline <= 1) return 'urgent'; // 緊急（1日以内）
-    if (daysUntilDeadline <= 3) return 'soon';   // 近い（3日以内）
-    return 'normal';                            // 通常
+    if (daysUntilDeadline < 0) return 'expired';  // 期限切れ
+    if (daysUntilDeadline === 0) return 'today';  // 当日
+    if (daysUntilDeadline === 1) return 'tomorrow'; // 明日
+    if (daysUntilDeadline <= 3) return 'soon';    // 近い（3日以内）
+    return 'normal';                               // 通常
+  };
+
+  // 表示テキストを返す関数を修正
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'expired':
+        return '期限切れ';
+      case 'today':
+        return '今日が締切';
+      case 'tomorrow':
+        return '明日が締切';
+      case 'soon':
+        return `あと${daysUntilDeadline}日`;
+      default:
+        return `あと${daysUntilDeadline}日`;
+    }
   };
 
   const deadlineStatus = getDeadlineStatus();
@@ -96,14 +113,6 @@ const TaskItem: React.FC<TaskItemProps> = ({
           text: 'text-red-800',
           badgeBg: 'bg-red-100',
           icon: 'text-red-600'
-        };
-      case 'urgent':
-        return {
-          bg: 'bg-orange-50',
-          border: 'border-orange-500',
-          text: 'text-orange-800',
-          badgeBg: 'bg-orange-100',
-          icon: 'text-orange-600'
         };
       case 'soon':
         return {
@@ -161,11 +170,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
             <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colorClasses.badgeBg} ${colorClasses.text}`}>
               {isCompleted 
                 ? '完了済み' 
-                : deadlineStatus === 'expired'
-                  ? '期限切れ'
-                  : deadlineStatus === 'urgent'
-                    ? '今日が締切'
-                    : '未完了'}
+                : getStatusText(deadlineStatus)}
             </span>
           </div>
         </div>
@@ -292,11 +297,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
           <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${colorClasses.badgeBg} ${colorClasses.text}`}>
             {isCompleted 
               ? '完了済み' 
-              : deadlineStatus === 'expired'
-                ? '期限切れ'
-                : deadlineStatus === 'urgent'
-                  ? '今日が締切'
-                  : '未完了'}
+              : getStatusText(deadlineStatus)}
           </span>
           
           {/* 右：締切日 */}
