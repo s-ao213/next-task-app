@@ -44,7 +44,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       return targetIds.includes(userId);
     }
     if (task.subject === '知能情報実験実習2 B班') {
-      const targetIds = [...Array.from({length: 18}, (_, i) => (i + 18).toString()), '99'];
+      const targetIds = [...Array.from({length: 18}, (_, i) => (i + 18).toString()), '99']; //デバック用の99
       return targetIds.includes(userId);
     }
     if (task.subject === '生活と物質') {

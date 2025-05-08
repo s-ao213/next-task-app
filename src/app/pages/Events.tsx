@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { User } from '@supabase/supabase-js';
 import { Event } from '../_types/event';
@@ -10,6 +10,7 @@ import Button from '../_components/Button';
 
 const Events: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [user, setUser] = useState<User | null>(null);
@@ -27,67 +28,70 @@ const Events: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchEvents = async (userId: string) => {
+  // Events.tsxのfetchEventsを最適化
+  const fetchEvents = useCallback(async (userId: string) => {
     try {
       setLoading(true);
-      console.log('イベント取得開始 - ユーザーID:', userId);
-
+      
       const { data: eventsData, error } = await supabase
-        .from('active_events')  // eventsの代わりにactive_eventsを使用
+        .from('active_events')
         .select('*')
+        .or(`assigned_to.cs.{${userId}},is_for_all.eq.true`)  // SQLレベルでフィルタリング
         .order('date_time', { ascending: true });
 
       if (error) throw error;
 
-      const filteredEvents = eventsData?.filter(event => {
-        if (!event) return false;
-        return event.is_for_all || 
-          (Array.isArray(event.assigned_to) && event.assigned_to.includes(userId));
-      }) ?? [];
-
-      setEvents(filteredEvents);
-      setFilteredEvents(filteredEvents);
-
+      setEvents(eventsData || []);
+      setFilteredEvents(eventsData || []);
     } catch (error) {
       console.error('イベント取得エラー:', error);
+      setError('イベントの取得に失敗しました');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const applyFilters = useCallback(() => {
-    let filtered = [...events];
+  // リアルタイム更新の実装
+  useEffect(() => {
+    const channel = supabase
+      .channel('events_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'events'
+      }, () => {
+        if (user) {
+          fetchEvents(user.id);
+        }
+      })
+      .subscribe();
 
-    // Apply title filter
-    if (filter.title) {
-      filtered = filtered.filter(event => 
-        event.title.toLowerCase().includes(filter.title.toLowerCase())
-      );
-    }
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [fetchEvents, user]);
 
-    // Apply venue filter
-    if (filter.venue) {
-      filtered = filtered.filter(event => 
-        event.venue.toLowerCase().includes(filter.venue.toLowerCase())
-      );
-    }
+  // リアルタイムサブスクリプションを最適化
+  useEffect(() => {
+    if (!user) return;
 
-    // Apply importance filter
-    if (filter.isImportant) {
-      filtered = filtered.filter(event => event.is_important);
-    }
+    const channel = supabase
+      .channel('events_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'events',
+        filter: `assigned_to=cs.{${user.id}}`  // フィルターを追加
+      }, () => {
+        fetchEvents(user.id);
+      })
+      .subscribe();
 
-    // Apply sorting
-    if (sortOrder === 'date_time') {
-      filtered.sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
-    } else if (sortOrder === 'title') {
-      filtered.sort((a, b) => a.title.localeCompare(b.title));
-    }
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, fetchEvents]);
 
-    setFilteredEvents(filtered);
-  }, [events, filter, sortOrder]);
-
-  // ユーザー情報とイベントの取得を同期させる
   useEffect(() => {
     const initializeData = async () => {
       try {
@@ -105,10 +109,27 @@ const Events: React.FC = () => {
     initializeData();
   }, []);
 
-  // フィルターやソート順が変わった時にフィルタリングを適用
+  // メモ化されたフィルタリング関数
+  const filteredEventsMemo = useMemo(() => {
+    return events.filter(event => {
+      const matchesTitle = !filter.title || 
+        event.title.toLowerCase().includes(filter.title.toLowerCase());
+      const matchesVenue = !filter.venue || 
+        event.venue.toLowerCase().includes(filter.venue.toLowerCase());
+      const matchesImportant = !filter.isImportant || event.is_important;
+      
+      return matchesTitle && matchesVenue && matchesImportant;
+    }).sort((a, b) => {
+      if (sortOrder === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      return new Date(a.date_time).getTime() - new Date(b.date_time).getTime();
+    });
+  }, [events, filter, sortOrder]);
+
   useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
+    setFilteredEvents(filteredEventsMemo);
+  }, [filteredEventsMemo]);
 
   const handleFilterChange = (filterName: string, value: string | boolean) => {
     setFilter(prev => ({
@@ -317,7 +338,12 @@ const Events: React.FC = () => {
         </div>
       </div>
       
-      {loading ? (
+      {error ? (
+        <div className="text-center py-8 text-red-600">
+          <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+          <p>{error}</p>
+        </div>
+      ) : loading ? (
         <div className="text-center py-8">
           <Loader2 className="h-8 w-8 text-green-500 animate-spin mx-auto mb-2" />
           <p>読み込み中...</p>

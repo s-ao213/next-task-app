@@ -132,12 +132,22 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     setAssignedUsers(assignedUsers.filter(user => user.id !== userId));
   };
 
+  // タイムアウト処理を追加
+  const TIMEOUT_DURATION = 10000; // 10秒
+
   // フォーム送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
+
+    // タイムアウト用のPromise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('タイムアウト: 処理に時間がかかりすぎています'));
+      }, TIMEOUT_DURATION);
+    });
 
     try {
       // バリデーションを順番に実行
@@ -215,43 +225,102 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         created_at: new Date().toISOString()
       };
 
-      let result;
-      if (isEditing && initialTask?.id) {
-        result = await supabase
-          .from('tasks')
-          .update(taskData)
-          .eq('id', initialTask.id);
-      } else {
-        result = await supabase
-          .from('tasks')
-          .insert([taskData]);
-      }
+      // Promise.raceを使用してタイムアウト処理を追加
+      const savePromise = async () => {
+        let result;
+        if (isEditing && initialTask?.id) {
+          result = await supabase
+            .from('tasks')
+            .update(taskData)
+            .eq('id', initialTask.id);
+        } else {
+          result = await supabase
+            .from('tasks')
+            .insert([taskData]);
+        }
+        return result;
+      };
 
-      if (result.error) throw result.error;
+      const result = await Promise.race([savePromise(), timeoutPromise]) as { error?: { message: string } };
+
+      if (result?.error) throw result.error;
 
       setSuccess(isEditing ? '課題を更新しました' : '新しい課題を作成しました');
 
-      // フォームのリセット（編集時はスキップ）
+      // フォームデータをローカルストレージに一時保存
       if (!isEditing) {
-        setTitle('');
-        setDescription('');
-        setDueDate(null);
-        setSubject('');
-        setSubmissionMethod(SubmissionMethod.GOOGLE_CLASSROOM);
-        setIsImportant(false);
-        setAssignType('all');
-        setStudentId('');
-        setAssignedUsers([]);
+        localStorage.setItem('taskFormData', JSON.stringify({
+          title,
+          description,
+          dueDate,
+          subject,
+          submissionMethod,
+          isImportant,
+          assignType,
+          assignedUsers
+        }));
+
+        // 成功したら一時保存を削除
+        localStorage.removeItem('taskFormData');
+        
+        // フォームリセット
+        resetForm();
       }
 
       onSubmit();
     } catch (err) {
       console.error('課題保存エラー:', err);
       setError(err instanceof Error ? err.message : '課題の保存中にエラーが発生しました');
+      
+      // エラー時にフォームデータを保持
+      localStorage.setItem('taskFormData', JSON.stringify({
+        title,
+        description,
+        dueDate,
+        subject,
+        submissionMethod,
+        isImportant,
+        assignType,
+        assignedUsers
+      }));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // フォームリセット関数
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setDueDate(null);
+    setSubject('');
+    setSubmissionMethod(SubmissionMethod.GOOGLE_CLASSROOM);
+    setIsImportant(false);
+    setAssignType('all');
+    setStudentId('');
+    setAssignedUsers([]);
+  };
+
+  // コンポーネントマウント時に一時保存データを復元
+  useEffect(() => {
+    const savedData = localStorage.getItem('taskFormData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setTitle(parsedData.title || '');
+        setDescription(parsedData.description || '');
+        setDueDate(parsedData.dueDate ? new Date(parsedData.dueDate) : null);
+        setSubject(parsedData.subject || '');
+        setSubmissionMethod(parsedData.submissionMethod || SubmissionMethod.GOOGLE_CLASSROOM);
+        setIsImportant(parsedData.isImportant || false);
+        setAssignType(parsedData.assignType || 'all');
+        setAssignedUsers(parsedData.assignedUsers || []);
+      } catch (error) {
+        console.error('保存データの復元に失敗しました:', error);
+        localStorage.removeItem('taskFormData');
+      }
+    }
+  }, []);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">

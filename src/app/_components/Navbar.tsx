@@ -1,9 +1,10 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Session } from '@supabase/supabase-js';
 import { Menu, X, Home, Calendar, ClipboardList, PartyPopper, BookOpen, LogOut } from 'lucide-react';
+import React from 'react';
 
 const Navbar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,28 +13,26 @@ const Navbar: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // ナビゲーションメニューを開いている時に画面サイズが変わった場合の処理
     const handleResize = () => {
       if (window.innerWidth >= 768) {
         setIsOpen(false);
       }
     };
 
-    // セッション情報の取得
-    const getSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      
-      // ユーザーのイニシャルを設定
-      if (data.session?.user?.email) {
-        setUserInitial(data.session.user.email[0].toUpperCase());
+    // セッション監視の設定
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
+      setSession(session);
+      if (session?.user?.email) {
+        setUserInitial(session.user.email[0].toUpperCase());
       }
-    };
-    
-    getSession();
+    });
+
     window.addEventListener('resize', handleResize);
     
     return () => {
+      subscription.unsubscribe();
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -49,13 +48,14 @@ const Navbar: React.FC = () => {
     return location.pathname === path;
   };
 
-  const navItems = [
+  // パフォーマンス最適化のためメモ化
+  const memoizedNavItems = useMemo(() => [
     { name: 'ダッシュボード', path: '/', icon: <Home size={20} /> },
     { name: 'カレンダー', path: '/calendar', icon: <Calendar size={20} /> },
     { name: '課題', path: '/tasks', icon: <ClipboardList size={20} /> },
     { name: 'イベント', path: '/events', icon: <PartyPopper size={20} /> },
     { name: 'テスト', path: '/tests', icon: <BookOpen size={20} /> },
-  ];
+  ], []);
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50">
@@ -71,7 +71,7 @@ const Navbar: React.FC = () => {
           
           {/* デスクトップナビゲーション */}
           <div className="hidden md:flex md:items-center md:space-x-1">
-            {navItems.map((item) => (
+            {memoizedNavItems.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -131,7 +131,7 @@ const Navbar: React.FC = () => {
       {/* モバイル用メニュー */}
       <div className={`md:hidden ${isOpen ? 'block' : 'hidden'}`}>
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white shadow-lg">
-          {navItems.map((item) => (
+          {memoizedNavItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
@@ -188,4 +188,4 @@ const Navbar: React.FC = () => {
   );
 };
 
-export default Navbar;
+export default React.memo(Navbar);
