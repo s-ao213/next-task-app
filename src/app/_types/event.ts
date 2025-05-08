@@ -11,5 +11,4 @@ export interface Event {
   created_at?: string;
   is_for_all: boolean;
   assigned_to: string[];
-  assigned_user_id: { id: string; name: string; }[] | null;
 }

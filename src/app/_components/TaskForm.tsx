@@ -140,7 +140,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     setIsSubmitting(true);
 
     try {
-      // 最低限必要なバリデーションのみ実施
+      // バリデーション
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
@@ -149,56 +149,57 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         throw new Error('教科・科目を選択してください');
       }
 
-      // 割り当て対象の処理
-      const taskData: Partial<TaskType> = {
+      if (!user) {
+        throw new Error('ユーザー情報が取得できません');
+      }
+
+      // テーブルのカラムに合わせたデータ構造
+      const taskData = {
         title: title.trim(),
-        description: description.trim() || '', // 空文字列をデフォルト値として設定
-        // 期限が未設定の場合は「期限なし」を表す将来日付を設定
-        deadline: dueDate ? dueDate.toISOString() : '2099-12-31T23:59:59.999Z',
-        subject: subject,
-        submission_method: submissionMethod || SubmissionMethod.OTHER,
-        created_by: user?.id,
+        description: description.trim() || null,
+        deadline: dueDate?.toISOString() || null,
+        subject,
+        submission_method: submissionMethod,
+        created_by: user.id,
         is_important: isImportant,
         is_for_all: assignType === 'all',
-        assigned_to: assignType === 'specific' && assignedUsers.length > 0
-          ? assignedUsers.map(user => user.id)
-          : [],
-        assigned_user_id: null  // 複数ユーザー対応のため、このフィールドは使用しない
+        assigned_to: assignType === 'specific' ? assignedUsers.map(u => u.id) : [],
+        created_at: new Date().toISOString()
       };
 
       let result;
       if (isEditing && initialTask?.id) {
-        // 課題を更新
         result = await supabase
           .from('tasks')
           .update(taskData)
-          .eq('id', initialTask.id);
+          .eq('id', initialTask.id)
+          .select('*')  // レスポンスに結果を含める
+          .single();
       } else {
-        // 新規課題を作成
-        taskData.created_at = new Date().toISOString(); // created_atに日時を設定
         result = await supabase
           .from('tasks')
-          .insert([taskData]);
+          .insert([taskData])
+          .select('*')  // レスポンスに結果を含める
+          .single();
       }
 
       if (result.error) throw result.error;
-      
+
       setSuccess(isEditing ? '課題を更新しました' : '新しい課題を作成しました');
-      
-      // フォームをリセット（編集時はリセットしない）
+
+      // フォームのリセット（編集時はスキップ）
       if (!isEditing) {
         setTitle('');
         setDescription('');
         setDueDate(null);
-        setSubject(''); // 空の選択肢に戻す
+        setSubject('');
         setSubmissionMethod(SubmissionMethod.GOOGLE_CLASSROOM);
         setIsImportant(false);
         setAssignType('all');
         setStudentId('');
         setAssignedUsers([]);
       }
-      
-      // 親コンポーネントに通知
+
       onSubmit();
     } catch (err) {
       console.error('課題保存エラー:', err);
