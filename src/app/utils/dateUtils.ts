@@ -29,10 +29,14 @@ export const isBeforeDeadline = (deadline: string): boolean => {
   return now < deadlineDate;
 };
   
-export const getDaysUntilDeadline = (deadline: string): number => {
+export const getDaysUntilDeadline = (deadline: string | null): number => {
+  // 期限が設定されていない場合は特別な値を返す
+  if (!deadline || deadline.startsWith('2099-')) {
+    return Infinity; // または大きな正の数（例：999）
+  }
+  
   const now = new Date();
   const deadlineDate = new Date(deadline);
   const diffTime = deadlineDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };

@@ -68,11 +68,16 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
   // 期限の状態を判断するヘルパー関数を修正
   const getDeadlineStatus = () => {
-    if (daysUntilDeadline < 0) return 'expired';  // 期限切れ
-    if (daysUntilDeadline === 0) return 'today';  // 当日
-    if (daysUntilDeadline === 1) return 'tomorrow'; // 明日
-    if (daysUntilDeadline <= 3) return 'soon';    // 近い（3日以内）
-    return 'normal';                               // 通常
+    // 期限が設定されていない場合
+    if (!task.deadline || task.deadline.startsWith('2099-')) {
+      return 'no-deadline';
+    }
+    
+    if (daysUntilDeadline < 0) return 'expired';
+    if (daysUntilDeadline === 0) return 'today';
+    if (daysUntilDeadline === 1) return 'tomorrow';
+    if (daysUntilDeadline <= 3) return 'soon';
+    return 'normal';
   };
 
   // 表示テキストを返す関数を修正
@@ -86,6 +91,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
         return '明日が締切';
       case 'soon':
         return `あと${daysUntilDeadline}日`;
+      case 'no-deadline':
+        return '期限なし';
       default:
         return `あと${daysUntilDeadline}日`;
     }
@@ -106,6 +113,14 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
     
     switch (deadlineStatus) {
+      case 'no-deadline':
+        return {
+          bg: 'bg-gray-50',
+          border: 'border-gray-300',
+          text: 'text-gray-600',
+          badgeBg: 'bg-gray-100',
+          icon: 'text-gray-500'
+        };
       case 'expired':
         return {
           bg: 'bg-red-50',
