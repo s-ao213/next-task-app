@@ -39,8 +39,13 @@ const Tests: React.FC = () => {
       
       // テストと課題を並行して取得
       const [testsResponse, tasksResponse] = await Promise.all([
-        supabase.from('tests').select('*'),
-        supabase.from('tasks').select('id, title')
+        supabase
+          .from('tests')
+          .select('*')
+          .order('test_date', { ascending: true }),
+        supabase
+          .from('tasks')
+          .select('id, title')
       ]);
       
       if (testsResponse.error) throw testsResponse.error;
@@ -48,7 +53,8 @@ const Tests: React.FC = () => {
       
       setTests(testsResponse.data || []);
       setTasks(tasksResponse.data || []);
-      setFilteredTests(testsResponse.data || []);
+      // フィルターを適用
+      applyFilters();
     } catch (error) {
       console.error('Error fetching tests:', error);
     } finally {
@@ -92,11 +98,11 @@ const Tests: React.FC = () => {
     setSortOrder(value as "subject" | "test_date");
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = async () => {
+    await fetchTests(); // 先にデータを再取得
     setShowForm(false);
     setSelectedTest(null);
     setIsEditing(false);
-    fetchTests();
   };
 
   const handleEditClick = (test: Test) => {

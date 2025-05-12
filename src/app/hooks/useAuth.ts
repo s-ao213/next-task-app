@@ -125,66 +125,57 @@ const mapSupabaseUser = async (supabaseUser: SupabaseUser | null): Promise<User 
   };
 };
 
+const handleError = (error: unknown) => {
+  console.error('認証エラー:', error);
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return '予期しないエラーが発生しました';
+};
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // セッションチェック＆ユーザー情報の取得
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUser = session?.user || null;
-      
-      if (supabaseUser) {
-        // ユーザー情報をマッピング
-        const mappedUser = await mapSupabaseUser(supabaseUser);
-        setUser(mappedUser);
-        
-        // ローカルストレージに保存（自動ログイン用）
-        if (mappedUser?.email) {
-          localStorage.setItem(EMAIL_STORAGE_KEY, mappedUser.email);
-        }
-        if (mappedUser?.studentId) {
-          localStorage.setItem(STUDENT_ID_KEY, mappedUser.studentId);
-        }
-      } else {
-        setUser(null);
-      }
-      
-      setLoading(false);
-    };
+    // セッションの初期化
+    const initializeAuth = async () => {
+      try {
+        // 現在のセッションを取得
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
 
-    getSession();
-
-    // 認証状態の変更を監視
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        const supabaseUser = session?.user || null;
-        
-        if (event === 'SIGNED_IN' && supabaseUser) {
-          const mappedUser = await mapSupabaseUser(supabaseUser);
+        if (session) {
+          const mappedUser = await mapSupabaseUser(session.user);
           setUser(mappedUser);
-          
-          // ローカルストレージに保存
-          if (mappedUser?.email) {
-            localStorage.setItem(EMAIL_STORAGE_KEY, mappedUser.email);
-          }
-          if (mappedUser?.studentId) {
-            localStorage.setItem(STUDENT_ID_KEY, mappedUser.studentId);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          localStorage.removeItem(EMAIL_STORAGE_KEY);
-          localStorage.removeItem(STUDENT_ID_KEY);
         }
-        
+
+        // 認証状態の変更を監視
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            try {
+              if (event === 'SIGNED_OUT') {
+                setUser(null);
+                localStorage.clear();
+              } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                const mappedUser = await mapSupabaseUser(session?.user || null);
+                setUser(mappedUser);
+              }
+            } catch (error) {
+              console.error('認証状態変更エラー:', error);
+            }
+          }
+        );
+
+        return () => subscription.unsubscribe();
+      } catch (error) {
+        console.error('認証初期化エラー:', handleError(error));
+      } finally {
         setLoading(false);
       }
-    );
-
-    return () => {
-      authListener?.subscription.unsubscribe();
     };
+
+    initializeAuth();
   }, []);
   
   // 出席番号を使用したサインアップ（新規ユーザー登録）

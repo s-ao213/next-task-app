@@ -106,7 +106,7 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
     setSuccess(null);
     
     try {
-      // 必須項目のみバリデーション
+      // バリデーション
       if (!formData.subject.trim()) {
         throw new Error('教科を入力してください');
       }
@@ -114,48 +114,64 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
       if (!formData.test_date) {
         throw new Error('実施日を選択してください');
       }
-      
-      // 範囲は必須ではなく任意に変更
-      // if (!formData.scope.trim()) {
-      //   throw new Error('テスト範囲を入力してください');
-      // }
 
-      // データの準備（必須フィールドと任意フィールドを分離）
       const testData = {
         subject: formData.subject,
         test_date: formData.test_date,
-        scope: formData.scope.trim() || '未設定', // 空の場合はデフォルト値
-        related_task_id: formData.relatedTaskId || null, // 任意
-        teacher: formData.teacher || null, // 任意
+        scope: formData.scope.trim() || '未設定',
+        related_task_id: formData.relatedTaskId || null,
+        teacher: formData.teacher || null,
         is_important: formData.isImportant
       };
 
       let result;
-      
       if (isEditing && initialTest?.id) {
-        // 既存のテストを更新
+        const updateData = {
+          ...testData,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id
+        };
+
+        // 更新処理の修正
         result = await supabase
           .from('tests')
-          .update(testData)
-          .eq('id', initialTest.id);
+          .update(updateData)
+          .match({ id: initialTest.id }) // .eq()の代わりにmatch()を使用
+          .select()
+          .maybeSingle(); // single()の代わりにmaybeSingle()を使用
+
+        // エラーチェックの修正
+        if (result.error) {
+          throw new Error(`更新に失敗しました: ${result.error.message}`);
+        }
+
+        if (!result.data) {
+          throw new Error('更新するテストが見つかりませんでした');
+        }
       } else {
-        // 新規テストを作成
+        // 新規作成
         const newTest = {
           ...testData,
           id: uuidv4(),
           created_by: user.id,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),  // 初回作成時も updated_at を設定
+          updated_by: user.id                    // 初回作成時も updated_by を設定
         };
         
-        result = await supabase.from('tests').insert([newTest]);
+        result = await supabase
+          .from('tests')
+          .insert([newTest])
+          .select()
+          .single();
+
+        if (result.error) {
+          throw new Error(`作成に失敗しました: ${result.error.message}`);
+        }
       }
-      
-      if (result.error) {
-        throw result.error;
-      }
-      
+
       setSuccess(isEditing ? 'テストを更新しました' : 'テストを追加しました');
-      
+
       // 成功したらフォームをリセット（編集モードでない場合のみ）
       if (!isEditing) {
         setFormData({
@@ -167,8 +183,8 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
           isImportant: false
         });
       }
-      
-      onSuccess();
+
+      await onSuccess();
     } catch (err) {
       console.error('Error adding/updating test:', err);
       setError(err instanceof Error ? err.message : 'テストの追加/更新に失敗しました');

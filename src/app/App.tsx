@@ -13,22 +13,24 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 import { Session } from '@supabase/supabase-js';
-import { Loader2 } from 'lucide-react';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isBrowser, setIsBrowser] = useState(false);
 
   useEffect(() => {
-    setIsBrowser(true);
-    
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // セッションの取得を試みる
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
         setSession(session);
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        // 認証状態の変更を監視
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
           setSession(session);
         });
 
@@ -43,18 +45,10 @@ function App() {
     initializeAuth();
   }, []);
 
-  if (!isBrowser) {
-    return null;
-  }
-
   if (loading) {
     return (
-      <div className="h-screen w-screen flex items-center justify-center bg-gradient-to-r from-indigo-100 to-purple-100">
-        <div className="flex flex-col items-center gap-4 p-8 bg-white rounded-lg shadow-lg">
-          <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
-          <h2 className="text-xl font-medium text-gray-700">読み込み中...</h2>
-          <p className="text-gray-500">アプリケーションを準備しています</p>
-        </div>
+      <div className="h-screen w-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
       </div>
     );
   }
