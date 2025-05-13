@@ -125,14 +125,6 @@ const mapSupabaseUser = async (supabaseUser: SupabaseUser | null): Promise<User 
   };
 };
 
-const handleError = (error: unknown) => {
-  console.error('認証エラー:', error);
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return '予期しないエラーが発生しました';
-};
-
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
