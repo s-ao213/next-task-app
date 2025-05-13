@@ -113,14 +113,6 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
     
     switch (deadlineStatus) {
-      case 'no-deadline':
-        return {
-          bg: 'bg-gray-50',
-          border: 'border-gray-300',
-          text: 'text-gray-600',
-          badgeBg: 'bg-gray-100',
-          icon: 'text-gray-500'
-        };
       case 'expired':
         return {
           bg: 'bg-red-50',
@@ -129,9 +121,25 @@ const TaskItem: React.FC<TaskItemProps> = ({
           badgeBg: 'bg-red-100',
           icon: 'text-red-600'
         };
+      case 'today':
+        return {
+          bg: 'bg-orange-50',  // 当日は橙色の背景
+          border: 'border-orange-500',
+          text: 'text-orange-800',
+          badgeBg: 'bg-orange-100',
+          icon: 'text-orange-600'
+        };
+      case 'tomorrow':
+        return {
+          bg: 'bg-amber-50',  // 翌日は琥珀色の背景
+          border: 'border-amber-500',
+          text: 'text-amber-800',
+          badgeBg: 'bg-amber-100',
+          icon: 'text-amber-600'
+        };
       case 'soon':
         return {
-          bg: 'bg-yellow-50',
+          bg: 'bg-yellow-50',  // 3日以内は黄色の背景（既存）
           border: 'border-yellow-500',
           text: 'text-yellow-800',
           badgeBg: 'bg-yellow-100',
@@ -141,9 +149,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
         return {
           bg: '',
           border: 'border-gray-200',
-          text: 'text-blue-800',
-          badgeBg: 'bg-blue-100',
-          icon: 'text-blue-600'
+          text: 'text-gray-800',
+          badgeBg: 'bg-gray-100',
+          icon: 'text-gray-600'
         };
     }
   };
