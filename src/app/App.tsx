@@ -21,22 +21,31 @@ function App() {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // セッションの取得を試みる
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        
-        setSession(session);
+        // 既存のセッションを確認
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        setSession(existingSession);
 
         // 認証状態の変更を監視
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-          setSession(session);
-        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            console.log('Auth state changed:', event);
+            setSession(session);
 
-        return () => subscription.unsubscribe();
+            if (event === 'SIGNED_OUT') {
+              // セッション関連のストレージをクリア
+              localStorage.clear();
+              setSession(null);
+            }
+          }
+        );
+
+        return () => {
+          subscription?.unsubscribe();
+        };
       } catch (error) {
         console.error('認証初期化エラー:', error);
+        // エラー時はセッションをクリア
+        setSession(null);
       } finally {
         setLoading(false);
       }

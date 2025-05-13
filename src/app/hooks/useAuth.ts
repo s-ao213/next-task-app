@@ -137,15 +137,24 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // セッションの再取得を試みる関数を追加
+  const refreshSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return session;
+    } catch (error) {
+      console.error('セッション更新エラー:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // セッションの初期化
     const initializeAuth = async () => {
       try {
-        // 現在のセッションを取得
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        if (session) {
+        const session = await refreshSession();
+        if (session?.user) {
           const mappedUser = await mapSupabaseUser(session.user);
           setUser(mappedUser);
         }
@@ -153,23 +162,20 @@ export const useAuth = () => {
         // 認証状態の変更を監視
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            try {
-              if (event === 'SIGNED_OUT') {
-                setUser(null);
-                localStorage.clear();
-              } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                const mappedUser = await mapSupabaseUser(session?.user || null);
-                setUser(mappedUser);
-              }
-            } catch (error) {
-              console.error('認証状態変更エラー:', error);
+            if (event === 'TOKEN_REFRESHED') {
+              console.log('Token refreshed');
             }
+            const mappedUser = await mapSupabaseUser(session?.user || null);
+            setUser(mappedUser);
           }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
-        console.error('認証初期化エラー:', handleError(error));
+        console.error('認証初期化エラー:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
