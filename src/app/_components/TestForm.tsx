@@ -106,7 +106,6 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
     setSuccess(null);
     
     try {
-      // バリデーション
       if (!formData.subject.trim()) {
         throw new Error('教科を入力してください');
       }
@@ -126,37 +125,22 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
 
       let result;
       if (isEditing && initialTest?.id) {
-        const updateData = {
-          ...testData,
-          updated_at: new Date().toISOString(),
-          updated_by: user.id
-        };
-
-        // 更新処理の修正
         result = await supabase
           .from('tests')
-          .update(updateData)
-          .match({ id: initialTest.id }) // .eq()の代わりにmatch()を使用
+          .update(testData)
+          .eq('id', initialTest.id)
           .select()
-          .maybeSingle(); // single()の代わりにmaybeSingle()を使用
+          .single();
 
-        // エラーチェックの修正
         if (result.error) {
           throw new Error(`更新に失敗しました: ${result.error.message}`);
         }
-
-        if (!result.data) {
-          throw new Error('更新するテストが見つかりませんでした');
-        }
       } else {
-        // 新規作成
         const newTest = {
           ...testData,
           id: uuidv4(),
           created_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),  // 初回作成時も updated_at を設定
-          updated_by: user.id                    // 初回作成時も updated_by を設定
+          created_at: new Date().toISOString()
         };
         
         result = await supabase
@@ -172,7 +156,6 @@ const TestForm: React.FC<TestFormProps> = ({ onSuccess, initialTest, isEditing =
 
       setSuccess(isEditing ? 'テストを更新しました' : 'テストを追加しました');
 
-      // 成功したらフォームをリセット（編集モードでない場合のみ）
       if (!isEditing) {
         setFormData({
           subject: '',
