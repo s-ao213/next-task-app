@@ -33,10 +33,12 @@ const Events: React.FC = () => {
     try {
       setLoading(true);
       
+      // 直接eventsテーブルを使用
       const { data: eventsData, error } = await supabase
-        .from('active_events')
+        .from('events')
         .select('*')
-        .or(`assigned_to.cs.{${userId}},is_for_all.eq.true`)  // SQLレベルでフィルタリング
+        .gte('date_time', new Date().toISOString())
+        .or(`assigned_to.cs.{${userId}},is_for_all.eq.true`)
         .order('date_time', { ascending: true });
 
       if (error) throw error;
