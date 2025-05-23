@@ -109,7 +109,7 @@ const Events: React.FC = () => {
     };
     
     initializeData();
-  }, []);
+  }, [fetchEvents]);
 
   // メモ化されたフィルタリング関数
   const filteredEventsMemo = useMemo(() => {
