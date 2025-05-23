@@ -178,13 +178,16 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
             '21', '22', '23', '24', '25', '26', '29', '30',
             '32', '33', '34', '35'
           ];
-        } else if (subject === '知能情報実験実習2 A班') {
-          targetStudentIds = Array.from({length: 17}, (_, i) => (i + 1).toString());
-        } else if (subject === '知能情報実験実習2 B班') {
-          targetStudentIds = [
-            ...Array.from({length: 18}, (_, i) => (i + 18).toString()),
-            '99'
-          ];
+        } else if (subject === '知能情報実験実習2 奇数班') {
+          // 奇数班（1, 3, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35）
+          targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
+            .filter(id => parseInt(id) % 2 === 1);
+        } else if (subject === '知能情報実験実習2 偶数班') {
+          // 偶数班（2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 99）
+          // 5番は例外として偶数班に含める
+          targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
+            .filter(id => parseInt(id) % 2 === 0 || id === '5')
+            .concat(['99']);
         } else if (subject === '生活と物質') {
           targetStudentIds = ['5', '20', '27', '28', '31', '99'];
         }
