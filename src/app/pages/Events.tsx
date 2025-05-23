@@ -419,8 +419,3 @@ const Events: React.FC = () => {
 };
 
 export default Events;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function setLoading(arg0: boolean) {
-  throw new Error('Function not implemented.');
-}
