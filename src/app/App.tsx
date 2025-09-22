@@ -11,6 +11,7 @@ import Events from './pages/Events';
 import Tests from './pages/Tests';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Setting from './pages/Setting';
 
 import { Session } from '@supabase/supabase-js';
 import { Loader2 } from 'lucide-react';
@@ -75,6 +76,7 @@ function App() {
                   <Route path="tasks" element={<Tasks />} />
                   <Route path="events" element={<Events />} />
                   <Route path="tests" element={<Tests />} />
+                  <Route path="setting" element={<Setting />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Layout>
