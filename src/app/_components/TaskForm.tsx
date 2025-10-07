@@ -34,8 +34,8 @@ const SUBJECTS = [
   'マルチメディア情報処理',
   '情報通信ネットワーク',
   'コンピュータシステム',
-  '知能情報実験実習2 A班',
-  '知能情報実験実習2 B班',
+  '知能情報実験実習2 奇数班',
+  '知能情報実験実習2 偶数班', 
   'その他'
 ];
 
@@ -180,13 +180,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
           ];
         } else if (subject === '知能情報実験実習2 奇数班') {
           // 奇数班（1, 3, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35）
+          // 5番は偶数班に含まれるため除外
           targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
-            .filter(id => parseInt(id) % 2 === 1);
+            .filter(id => {
+              const num = parseInt(id);
+              return num % 2 === 1 && num !== 5;
+            });
         } else if (subject === '知能情報実験実習2 偶数班') {
           // 偶数班（2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 99）
           // 5番は例外として偶数班に含める
           targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
-            .filter(id => parseInt(id) % 2 === 0 || id === '5')
+            .filter(id => {
+              const num = parseInt(id);
+              return num % 2 === 0 || num === 5;
+            })
             .concat(['99']);
         } else if (subject === '生活と物質') {
           targetStudentIds = ['5', '20', '27', '28', '31', '99'];

@@ -24,7 +24,7 @@ const Tasks: React.FC = () => {
   const [completionFilter, setCompletionFilter] = useState<string[]>([]);
   const [importantFilter, setImportantFilter] = useState<string[]>([]);
   const [showExpired, setShowExpired] = useState<boolean>(true); // falseからtrueに変更
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [] = useState<string>('');
   const [searchKeyword] = useState<string>('');
   const [, setHideCompleted] = useState<boolean>(false);
   
@@ -47,13 +47,14 @@ const Tasks: React.FC = () => {
     }
   }, [showExpired]);
 
-  // 教科フィルター変更時の処理
+  // 教科フィルター変更時の処理を削除または修正
   useEffect(() => {
-    if (subjectFilter.length === 1) {
-      setSelectedSubject(subjectFilter[0]);
-    } else {
-      setSelectedSubject('');
-    }
+    // 単一選択の処理を削除
+    // if (subjectFilter.length === 1) {
+    //   setSelectedSubject(subjectFilter[0]);
+    // } else {
+    //   setSelectedSubject('');
+    // }
   }, [subjectFilter]);
 
   // 完了状態フィルター変更時の処理
@@ -63,36 +64,63 @@ const Tasks: React.FC = () => {
 
   const fetchTasks = useCallback(async () => {
     if (!user) return;
-    
-    setIsLoading(true);
+
     try {
-      // 自分に割り振られた課題を取得するクエリ
-      let query = supabase
-        .from('tasks')
-        .select('*')
-        .or(`assigned_to.cs.{"${user.id}"}, is_for_all.eq.true`)
-        .order('deadline', { ascending: true });
-      
-      // 期限切れの課題を表示しない場合のフィルター
-      if (!showExpired) {
-        const today = now.toISOString().split('T')[0]; // YYYY-MM-DD形式
-        query = query.gte('deadline', today);
-      }
-      
-      const { data: tasksData, error: tasksError } = await query;
-      
-      if (tasksError) throw tasksError;
-      
-      // ユーザーのタスク完了状態を取得
-      const { data: statusData, error: statusError } = await supabase
-        .from('user_task_status')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (statusError) throw statusError;
-      
-      setTasks(tasksData || []);
-      setUserTaskStatuses(statusData || []);
+      setIsLoading(true);
+
+      // ユーザーの学籍番号を取得
+      const { data: userData } = await supabase
+        .from('users')
+        .select('student_id')
+        .eq('id', user.id)
+        .single();
+
+      const studentId = userData?.student_id;
+      const studentNum = parseInt(studentId || '0');
+
+      // タスクとステータスを取得
+      const [tasksResult, statusesResult] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('*')
+          .order('deadline', { ascending: true }),
+        supabase
+          .from('user_task_status')
+          .select('*')
+          .eq('user_id', user.id)
+      ]);
+
+      if (tasksResult.error) throw tasksResult.error;
+      if (statusesResult.error) throw statusesResult.error;
+
+      // タスクをフィルタリング: 知能情報実験実習2の班分けに基づく
+      const filteredTasks = tasksResult.data?.filter(task => {
+        // 知能情報実験実習2 奇数班
+        if (task.subject === '知能情報実験実習2 奇数班') {
+          // 奇数番号（5を除く）のみ
+          return studentNum % 2 === 1 && studentNum !== 5;
+        } 
+        // 知能情報実験実習2 偶数班
+        else if (task.subject === '知能情報実験実習2 偶数班') {
+          // 偶数番号 + 5番 + 99番
+          return studentNum % 2 === 0 || studentNum === 5 || studentId === '99';
+        }
+        // その他の科目
+        else {
+          // is_for_all が true の場合は全員に表示
+          if (task.is_for_all) return true;
+          
+          // assigned_to に自分のIDが含まれているか確認
+          if (task.assigned_to && Array.isArray(task.assigned_to)) {
+            return task.assigned_to.includes(user.id);
+          }
+          
+          return true;
+        }
+      }) || [];
+
+      setTasks(filteredTasks);
+      setUserTaskStatuses(statusesResult.data || []);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     } finally {
@@ -232,8 +260,10 @@ const Tasks: React.FC = () => {
 
   // 表示するタスクをフィルタリング - 修正版
   const filteredTasks = tasks.filter(task => {
-    // 基本的なフィルタリング（科目、キーワード）
-    const matchesSubject = !selectedSubject || task.subject === selectedSubject;
+    // 教科フィルタリング（複数選択対応 - OR条件）
+    const matchesSubject = subjectFilter.length === 0 || 
+      subjectFilter.includes(task.subject);
+    
     const matchesKeyword = !searchKeyword || 
       task.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchKeyword.toLowerCase()));
@@ -354,6 +384,7 @@ const Tasks: React.FC = () => {
                 options={getSubjectOptions()}
                 selectedValues={subjectFilter}
                 onChange={setSubjectFilter}
+                multiSelect={true}  // 複数選択を有効化
               />
               
               <Filter

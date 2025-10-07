@@ -92,9 +92,11 @@ const Navbar: React.FC = () => {
             {session ? (
               <div className="ml-4 flex items-center">
                 <div className="flex items-center space-x-2 border-l pl-4 border-gray-200">
-                  <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                    {userInitial}
-                  </div>
+                  <Link to="/setting">
+                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium cursor-pointer hover:opacity-80">
+                      {userInitial}
+                    </div>
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="flex items-center text-gray-700 hover:text-red-500 transition-colors duration-200"
@@ -151,9 +153,11 @@ const Navbar: React.FC = () => {
           {session ? (
             <div className="pt-4 pb-3 border-t border-gray-200">
               <div className="flex items-center px-3">
-                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                  {userInitial}
-                </div>
+                <Link to="/setting" onClick={() => setIsOpen(false)}>
+                  <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium cursor-pointer hover:opacity-80">
+                    {userInitial}
+                  </div>
+                </Link>
                 <div className="ml-3">
                   <div className="text-sm font-medium text-gray-800">
                     {session.user?.email}
