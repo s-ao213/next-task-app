@@ -12,7 +12,7 @@ import { Task as TaskType, SubmissionMethod } from '../_types/task';
 // 日本語ロケールを登録
 registerLocale('ja', ja);
 
-// 科目リストを定義（既存のimportの下に追加）
+// 科目リストを定義
 const SUBJECTS = [
   '言語と文化',
   '現代社会論',
@@ -60,7 +60,6 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     initialTask?.deadline ? new Date(initialTask.deadline) : null
   );
 
-  // 初期化値が科目リストにない場合の対応
   const initialSubject = initialTask?.subject || '';
   const [subject, setSubject] = useState(
     SUBJECTS.includes(initialSubject) ? initialSubject : ''
@@ -82,12 +81,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
   const [assignedUsers, setAssignedUsers] = useState<Array<{ id: string; name: string }>>(
     initialTask?.assigned_users || []
   );
-  const [, setStudentIdError] = useState('');
+  const [studentIdError, setStudentIdError] = useState('');
   
   // 初回のみ実行する副作用
   useEffect(() => {
-    if (initialTask?.assigned_users && initialTask?.assigned_user_id) {
-      setStudentId(initialTask.assigned_user_id);
+    if (initialTask?.assigned_users && initialTask?.assigned_to) {
+      setStudentId(initialTask.assigned_to[0] || '');
     }
   }, [initialTask]);
 
@@ -102,32 +101,34 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     setIsSubmitting(true);
     
     try {
-      const result = await getUserByStudentId(studentId);
+      const foundUser = await getUserByStudentId(studentId.trim());
       
-      if (result.error) {
-        setStudentIdError(result.error.message);
+      if (!foundUser) {
+        setStudentIdError('指定された出席番号のユーザーが見つかりません');
         return;
       }
-      
-      if (result.user) {
-        // 既に追加済みのユーザーでないか確認
-        if (!assignedUsers.some(u => u.id === result.user.id)) {
-          setAssignedUsers([...assignedUsers, {
-            id: result.user.id,
-            name: result.user.name
-          }]);
-        }
-        setStudentId(''); // 入力フィールドをクリア
+
+      // 既に追加済みのユーザーでないか確認
+      if (assignedUsers.some(u => u.id === foundUser.id)) {
+        setStudentIdError('このユーザーは既に追加されています');
+        return;
       }
+
+      setAssignedUsers([...assignedUsers, {
+        id: foundUser.id,
+        name: foundUser.name || foundUser.email
+      }]);
+      setStudentId('');
+      setStudentIdError('');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'ユーザーの検索中にエラーが発生しました';
-      setStudentIdError(errorMessage);
+      console.error('ユーザー検索エラー:', error);
+      setStudentIdError('ユーザーの検索中にエラーが発生しました');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ユーザー削除処理の追加
+  // ユーザー削除処理
   const removeUser = (userId: string) => {
     setAssignedUsers(assignedUsers.filter(user => user.id !== userId));
   };
@@ -150,7 +151,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
     });
 
     try {
-      // バリデーションを順番に実行
+      // バリデーション
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
@@ -159,10 +160,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         throw new Error('教科・科目を選択してください');
       }
 
-      // ユーザー情報の確認を最初に行う
       if (!user?.id) {
-        setError('ユーザー情報が取得できません。再度ログインしてください。');
-        return;
+        throw new Error('ユーザー情報が取得できません。再度ログインしてください。');
       }
 
       let assignedUserIds: string[] = [];
@@ -179,16 +178,12 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
             '32', '33', '34', '35'
           ];
         } else if (subject === '知能情報実験実習2 奇数班') {
-          // 奇数班（1, 3, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35）
-          // 5番は偶数班に含まれるため除外
           targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
             .filter(id => {
               const num = parseInt(id);
               return num % 2 === 1 && num !== 5;
             });
         } else if (subject === '知能情報実験実習2 偶数班') {
-          // 偶数班（2, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 99）
-          // 5番は例外として偶数班に含める
           targetStudentIds = Array.from({length: 35}, (_, i) => (i + 1).toString())
             .filter(id => {
               const num = parseInt(id);
@@ -200,7 +195,6 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         }
 
         try {
-          // 対象学生の一括取得
           if (targetStudentIds.length > 0) {
             const { data: users, error } = await supabase
               .from('users')
@@ -217,7 +211,6 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
           throw new Error('対象ユーザーの取得に失敗しました');
         }
       } else {
-        // 特定のユーザーが選択された場合
         assignedUserIds = assignedUsers.map(u => u.id);
       }
 
@@ -230,7 +223,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         submission_method: submissionMethod,
         created_by: user.id,
         is_important: isImportant,
-        is_for_all: assignType === 'all' && !['社会と環境', '知能情報実験実習2 A班', '知能情報実験実習2 B班'].includes(subject),
+        is_for_all: assignType === 'all' && !['社会と環境', '知能情報実験実習2 奇数班', '知能情報実験実習2 偶数班', '生活と物質'].includes(subject),
         assigned_to: assignedUserIds,
         created_at: new Date().toISOString()
       };
@@ -257,23 +250,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
 
       setSuccess(isEditing ? '課題を更新しました' : '新しい課題を作成しました');
 
-      // フォームデータをローカルストレージに一時保存
       if (!isEditing) {
-        localStorage.setItem('taskFormData', JSON.stringify({
-          title,
-          description,
-          dueDate,
-          subject,
-          submissionMethod,
-          isImportant,
-          assignType,
-          assignedUsers
-        }));
-
-        // 成功したら一時保存を削除
         localStorage.removeItem('taskFormData');
-        
-        // フォームリセット
         resetForm();
       }
 
@@ -282,7 +260,6 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
       console.error('課題保存エラー:', err);
       setError(err instanceof Error ? err.message : '課題の保存中にエラーが発生しました');
       
-      // エラー時にフォームデータを保持
       localStorage.setItem('taskFormData', JSON.stringify({
         title,
         description,
@@ -314,7 +291,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
   // コンポーネントマウント時に一時保存データを復元
   useEffect(() => {
     const savedData = localStorage.getItem('taskFormData');
-    if (savedData) {
+    if (savedData && !isEditing) {
       try {
         const parsedData = JSON.parse(savedData);
         setTitle(parsedData.title || '');
@@ -330,7 +307,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         localStorage.removeItem('taskFormData');
       }
     }
-  }, []);
+  }, [isEditing]);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
@@ -443,7 +420,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
         </div>
       </div>
 
-      {/* 課題の説明 - 全幅 */}
+      {/* 課題の説明 */}
       <div className="mb-6">
         <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
           課題の説明
@@ -487,6 +464,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
                 setAssignType('all');
                 setAssignedUsers([]);
                 setStudentId('');
+                setStudentIdError('');
               }}
               className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
             />
@@ -512,33 +490,51 @@ const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialTask, isEditing = 
                   <input
                     type="text"
                     value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
+                    onChange={(e) => {
+                      setStudentId(e.target.value);
+                      setStudentIdError('');
+                    }}
                     placeholder="出席番号を入力"
-                    className="w-full pl-10 pr-3 py-2 border rounded-md"
+                    className={`w-full pl-10 pr-3 py-2 border rounded-md ${
+                      studentIdError ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleStudentIdSearch();
+                      }
+                    }}
                   />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
                 </div>
                 <Button
                   type="button"
                   onClick={handleStudentIdSearch}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !studentId.trim()}
                   className="whitespace-nowrap"
                   size="sm"
                 >
                   {isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Search className="h-4 w-4 mr-1" />
+                    '追加'
                   )}
-                  <span>検索</span>
                 </Button>
               </div>
+
+              {studentIdError && (
+                <p className="text-sm text-red-600">{studentIdError}</p>
+              )}
               
               {/* 選択されたユーザー一覧 */}
               {assignedUsers.length > 0 && (
                 <div className="mt-2 space-y-2">
+                  <p className="text-sm text-gray-600">選択されたユーザー:</p>
                   {assignedUsers.map(user => (
-                    <div key={user.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span>{user.name}</span>
+                    <div key={user.id} className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+                      <span className="text-sm">{user.name}</span>
                       <button
                         type="button"
                         onClick={() => removeUser(user.id)}

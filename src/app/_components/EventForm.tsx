@@ -46,20 +46,12 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
     initialEvent?.assigned_user_name ? 'specific' : 'all'
   );
   const [studentId, setStudentId] = useState('');
-  const [, setAssignedUser] = useState<{ id: string, name: string } | null>(
-    initialEvent?.assigned_user_name ? {
-      id: initialEvent.assigned_user_name,
-      name: initialEvent.assigned_user_name || '指定ユーザー'
-    } : null
-  );
-  const [, setStudentIdError] = useState('');
+  const [studentIdError, setStudentIdError] = useState('');
 
   // 選択されたユーザーの配列を管理
   const [assignedUsers, setAssignedUsers] = useState<Array<{ id: string, name: string }>>(
     initialEvent?.assigned_to ? initialEvent.assigned_to.map(id => ({ id, name: id })) : []
   );
-
-  // 出席番号からユーザーを検索
 
   // ユーザー追加処理
   const handleAddUser = async () => {
@@ -68,25 +60,31 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
       return;
     }
 
+    setStudentIdError('');
+
     try {
-      const result = await getUserByStudentId(studentId);
-      if (result.error) {
-        setStudentIdError(result.error.message);
+      const foundUser = await getUserByStudentId(studentId.trim());
+      
+      if (!foundUser) {
+        setStudentIdError('指定された出席番号のユーザーが見つかりません');
         return;
       }
 
-      if (result.user) {
-        // 既に追加済みのユーザーでないか確認
-        if (!assignedUsers.some(u => u.id === result.user.id)) {
-          setAssignedUsers([...assignedUsers, {
-            id: result.user.id,
-            name: result.user.name
-          }]);
-        }
-        setStudentId(''); // 入力フィールドをクリア
+      // 既に追加済みのユーザーでないか確認
+      if (assignedUsers.some(u => u.id === foundUser.id)) {
+        setStudentIdError('このユーザーは既に追加されています');
+        return;
       }
+
+      setAssignedUsers([...assignedUsers, {
+        id: foundUser.id,
+        name: foundUser.name || foundUser.email || `学籍番号: ${foundUser.studentId}`
+      }]);
+      setStudentId(''); // 入力フィールドをクリア
+      setStudentIdError('');
     } catch (error) {
-      setStudentIdError(error instanceof Error ? error.message : 'ユーザーの検索中にエラーが発生しました');
+      console.error('ユーザー検索エラー:', error);
+      setStudentIdError('ユーザーの検索中にエラーが発生しました');
     }
   };
 
@@ -94,7 +92,6 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
   const removeUser = (userId: string) => {
     setAssignedUsers(assignedUsers.filter(user => user.id !== userId));
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,11 +104,6 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
       if (!title.trim()) {
         throw new Error('タイトルを入力してください');
       }
-
-      // 場所は必須ではなく任意に変更
-      // if (!venue.trim()) {
-      //   throw new Error('場所を入力してください');
-      // }
 
       if (!dateTime) {
         throw new Error('日時を選択してください');
@@ -128,7 +120,6 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         created_by: string | undefined;
         is_for_all: boolean;
         assigned_to: string[];
-        assigned_user_id: Array<{ id: string, name: string }> | null;
         created_at?: string;
       };
 
@@ -141,16 +132,12 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         items: items.trim() || null, 
         is_important: isImportant,
         created_by: user?.id,
-        // 特定のユーザーが選択されていない場合は全員向けに設定
         is_for_all: assignType === 'all' || assignedUsers.length === 0,
-        // 特定のユーザーが選択されている場合のみ assigned_to を設定
         assigned_to: assignType === 'specific' && assignedUsers.length > 0
           ? assignedUsers.map(user => user.id)
-          : [],
-        assigned_user_id: null
+          : []
       };
 
-      // デバッグ用にコンソールログを追加
       console.log('保存するイベントデータ:', eventData);
 
       let result;
@@ -183,7 +170,7 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
         setIsImportant(false);
         setAssignType('all');
         setStudentId('');
-        setAssignedUser(null);
+        setAssignedUsers([]);
       }
       
       onSubmit();
@@ -367,8 +354,9 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
               checked={assignType === 'all'}
               onChange={() => {
                 setAssignType('all');
-                setAssignedUser(null);
+                setAssignedUsers([]);
                 setStudentId('');
+                setStudentIdError('');
               }}
               className="focus:ring-purple-500 h-4 w-4 text-purple-600 border-gray-300"
             />
@@ -394,9 +382,14 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
                   <input
                     type="text"
                     value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
+                    onChange={(e) => {
+                      setStudentId(e.target.value);
+                      setStudentIdError('');
+                    }}
                     placeholder="出席番号を入力"
-                    className="w-full pl-10 pr-3 py-2 border rounded-md"
+                    className={`w-full px-3 py-2 border rounded-md ${
+                      studentIdError ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
                 </div>
                 <Button
@@ -408,12 +401,17 @@ const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialEvent, isEditing
                 </Button>
               </div>
 
+              {studentIdError && (
+                <p className="text-sm text-red-600">{studentIdError}</p>
+              )}
+
               {/* 選択されたユーザー一覧 */}
               {assignedUsers.length > 0 && (
                 <div className="mt-2 space-y-2">
+                  <p className="text-sm text-gray-600">選択されたユーザー:</p>
                   {assignedUsers.map(user => (
-                    <div key={user.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span>{user.name}</span>
+                    <div key={user.id} className="flex justify-between items-center p-2 bg-white border border-gray-200 rounded">
+                      <span className="text-sm">{user.name}</span>
                       <button
                         type="button"
                         onClick={() => removeUser(user.id)}

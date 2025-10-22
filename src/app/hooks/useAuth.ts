@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase, tokenManager } from '../supabaseClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // ユーザーインターフェースに出席番号を追加
 export interface User {
   id: string;
   email: string;
   name: string;
-  studentId?: string; // 出席番号
+  studentId?: string;
 }
 
 // ローカルストレージのキー
-const EMAIL_STORAGE_KEY = 'next-task-app-auth-email';
 const STUDENT_ID_KEY = 'next-task-app-student-id';
 
 // ユーザー情報をデータベースに保存・更新する関数
@@ -19,15 +18,12 @@ const storeUserInDatabase = async (user: SupabaseUser, studentId?: string) => {
   if (!user) return { error: { message: 'ユーザー情報がありません' } };
   
   try {
-    // 出席番号が必須の場合のバリデーション
     if (!studentId || studentId.trim() === '') {
       return { error: { message: '出席番号は必須です' } };
     }
     
-    // 出席番号を正規化（前後の空白を削除）
     const normalizedStudentId = studentId.trim();
     
-    // ユーザーが既に存在するか確認
     const { data, error } = await supabase
       .from('users')
       .select('id, student_id')
@@ -39,29 +35,25 @@ const storeUserInDatabase = async (user: SupabaseUser, studentId?: string) => {
       return { error };
     }
     
-    // 更新するデータを準備
     const userData: { 
       id: string;
       email: string | undefined;
       name: string;
-      student_id: string; // nullを許可しない
+      student_id: string;
       updated_at: string;
       created_at?: string;
     } = {
       id: user.id,
       email: user.email,
       name: user.user_metadata?.name || user.email || '',
-      // 必ず値を持つように
       student_id: normalizedStudentId,
       updated_at: new Date().toISOString()
     };
 
-    // 新規登録の場合は作成日時も設定
     if (!data) {
       userData.created_at = new Date().toISOString();
     }
     
-    // ユーザー情報をデータベースに保存/更新
     const { error: upsertError } = await supabase
       .from('users')
       .upsert(userData);
@@ -86,7 +78,6 @@ const checkStudentIdUnique = async (studentId: string, excludeUserId?: string) =
       .select('id')
       .eq('student_id', studentId);
     
-    // 自分自身は除外する（更新時）
     if (excludeUserId) {
       query = query.neq('id', excludeUserId);
     }
@@ -98,7 +89,6 @@ const checkStudentIdUnique = async (studentId: string, excludeUserId?: string) =
       return { isUnique: false, error };
     }
     
-    // データがなければ一意
     return { isUnique: !data || data.length === 0 };
   } catch (error) {
     console.error('Error checking student ID uniqueness:', error);
@@ -109,78 +99,201 @@ const checkStudentIdUnique = async (studentId: string, excludeUserId?: string) =
 // SupabaseのUser型を独自のUser型に変換する関数
 const mapSupabaseUser = async (supabaseUser: SupabaseUser | null): Promise<User | null> => {
   if (!supabaseUser) return null;
-  
-  // ユーザーの追加情報をデータベースから取得
-  const { data } = await supabase
-    .from('users')
-    .select('student_id')
-    .eq('id', supabaseUser.id)
-    .single();
-  
-  return {
-    id: supabaseUser.id,
-    email: supabaseUser.email || '',
-    name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
-    studentId: data?.student_id || '' 
-  };
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('student_id')
+      .eq('id', supabaseUser.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching user data:', error);
+    }
+
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+      studentId: data?.student_id || '' 
+    };
+  } catch (error) {
+    console.error('Error mapping user:', error);
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email || '',
+      name: supabaseUser.user_metadata?.name || supabaseUser.email || '',
+      studentId: ''
+    };
+  }
 };
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // セッションの再取得を試みる関数を追加
-  const refreshSession = async () => {
+  // トークンをチェックして必要なら更新
+  const checkAndRefreshToken = useCallback(async (): Promise<boolean> => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return session;
-    } catch (error) {
-      console.error('セッション更新エラー:', error);
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    // セッションの初期化
-    const initializeAuth = async () => {
-      try {
-        const session = await refreshSession();
+      const isExpiring = await tokenManager.isTokenExpiringSoon();
+      
+      if (isExpiring) {
+        const remaining = await tokenManager.getTokenRemainingMinutes();
+        console.log(`トークンの有効期限まで残り ${remaining} 分。更新します...`);
+        
+        const session = await tokenManager.refreshToken();
+        
         if (session?.user) {
           const mappedUser = await mapSupabaseUser(session.user);
           setUser(mappedUser);
+          console.log('トークン更新成功');
+          return true;
+        } else {
+          console.error('トークン更新失敗: ユーザー情報が取得できません');
+          tokenManager.clearTokens();
+          setUser(null);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('トークンチェック中のエラー:', error);
+      return false;
+    }
+  }, []);
+
+  // 初期化とトークン監視
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      try {
+        console.log('認証を初期化中...');
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (mounted) {
+          if (session?.user) {
+            const mappedUser = await mapSupabaseUser(session.user);
+            setUser(mappedUser);
+            
+            const remaining = await tokenManager.getTokenRemainingMinutes();
+            console.log(`現在のトークン有効期限まで残り ${remaining} 分`);
+          } else {
+            console.log('有効なトークンが見つかりません');
+            setUser(null);
+          }
+          setLoading(false);
         }
 
-        // 認証状態の変更を監視
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, session) => {
-            if (event === 'TOKEN_REFRESHED') {
-              console.log('Token refreshed');
+            if (!mounted) return;
+
+            console.log('認証イベント:', event);
+
+            switch (event) {
+              case 'SIGNED_IN':
+                if (session?.user) {
+                  const mappedUser = await mapSupabaseUser(session.user);
+                  setUser(mappedUser);
+                  console.log('サインイン成功');
+                }
+                break;
+                
+              case 'TOKEN_REFRESHED':
+                if (session?.user) {
+                  const mappedUser = await mapSupabaseUser(session.user);
+                  setUser(mappedUser);
+                  const remaining = await tokenManager.getTokenRemainingMinutes();
+                  console.log(`トークンが更新されました。有効期限まで残り ${remaining} 分`);
+                }
+                break;
+                
+              case 'SIGNED_OUT':
+                tokenManager.clearTokens();
+                setUser(null);
+                console.log('サインアウトしました');
+                break;
+                
+              case 'USER_UPDATED':
+                if (session?.user) {
+                  const mappedUser = await mapSupabaseUser(session.user);
+                  setUser(mappedUser);
+                }
+                break;
             }
-            const mappedUser = await mapSupabaseUser(session?.user || null);
-            setUser(mappedUser);
           }
         );
 
+        checkIntervalRef.current = setInterval(async () => {
+          const remaining = await tokenManager.getTokenRemainingMinutes();
+          console.log(`トークンチェック: 残り ${remaining} 分`);
+          await checkAndRefreshToken();
+        }, 2 * 60 * 1000);
+
+        refreshIntervalRef.current = setInterval(async () => {
+          console.log('定期的なトークン更新を実行...');
+          await tokenManager.refreshToken();
+        }, 45 * 60 * 1000);
+
         return () => {
-          subscription.unsubscribe();
+          subscription?.unsubscribe();
         };
       } catch (error) {
         console.error('認証初期化エラー:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
+        if (mounted) {
+          setUser(null);
+          setLoading(false);
+        }
       }
     };
 
-    initializeAuth();
-  }, []);
-  
-  // 出席番号を使用したサインアップ（新規ユーザー登録）
+    initialize();
+
+    return () => {
+      mounted = false;
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+    };
+  }, [checkAndRefreshToken]);
+
+  // ページの可視性監視
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('ページが表示されました。トークンをチェックします...');
+        const remaining = await tokenManager.getTokenRemainingMinutes();
+        console.log(`トークン残り時間: ${remaining} 分`);
+        await checkAndRefreshToken();
+      }
+    };
+
+    const handleFocus = async () => {
+      console.log('ウィンドウにフォーカスが戻りました。トークンをチェックします...');
+      await checkAndRefreshToken();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [checkAndRefreshToken]);
+
+  // サインアップ
   const signUp = async (email: string, password: string, studentId: string) => {
     setLoading(true);
     try {
-      // 出席番号のバリデーション
       if (!studentId || studentId.trim() === '') {
         return { 
           error: { message: '出席番号は必須です。入力してください。' },
@@ -188,10 +301,8 @@ export const useAuth = () => {
         };
       }
       
-      // 出席番号を正規化（前後の空白を削除）
       const normalizedStudentId = studentId.trim();
       
-      // まず出席番号の一意性を確認
       const { isUnique, error: checkError } = await checkStudentIdUnique(normalizedStudentId);
       
       if (checkError) {
@@ -208,20 +319,18 @@ export const useAuth = () => {
         };
       }
       
-      // 新規ユーザー登録 - メタデータに出席番号を保存
       const { data, error } = await supabase.auth.signUp({ 
         email, 
         password,
         options: {
           data: {
-            student_id: normalizedStudentId // 認証データにも出席番号を保存
+            student_id: normalizedStudentId
           }
         }
       });
       
       if (error) throw error;
       
-      // ユーザーメタデータ＆出席番号をデータベースに保存
       if (data.user) {
         const storeResult = await storeUserInDatabase(data.user, normalizedStudentId);
         
@@ -234,7 +343,6 @@ export const useAuth = () => {
         }
       }
       
-      // ローカルストレージに出席番号を保存
       localStorage.setItem(STUDENT_ID_KEY, normalizedStudentId);
       
       return { 
@@ -254,7 +362,7 @@ export const useAuth = () => {
     }
   };
 
-  // 出席番号を使用したサインイン（ログイン）
+  // サインイン
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
@@ -265,8 +373,9 @@ export const useAuth = () => {
       
       if (error) throw error;
       
-      // ユーザー情報をマッピング
       const mappedUser = await mapSupabaseUser(data.user);
+      const remaining = await tokenManager.getTokenRemainingMinutes();
+      console.log(`ログイン成功。トークン有効期限まで残り ${remaining} 分`);
       
       return { 
         error: null,
@@ -292,7 +401,6 @@ export const useAuth = () => {
     }
     
     try {
-      // 一意性の確認
       const { isUnique, error: checkError } = await checkStudentIdUnique(studentId, user.id);
       
       if (checkError) {
@@ -303,7 +411,6 @@ export const useAuth = () => {
         return { error: { message: 'この出席番号は既に使用されています。' } };
       }
       
-      // 出席番号を更新
       const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       
       if (supabaseUser) {
@@ -313,7 +420,6 @@ export const useAuth = () => {
           return { error: result.error };
         }
         
-        // 状態を更新
         const updatedUser = { ...user, studentId };
         setUser(updatedUser);
         localStorage.setItem(STUDENT_ID_KEY, studentId);
@@ -340,65 +446,86 @@ export const useAuth = () => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      // ローカルストレージもクリア
-      localStorage.removeItem(EMAIL_STORAGE_KEY);
-      localStorage.removeItem(STUDENT_ID_KEY);
+      tokenManager.clearTokens();
       setUser(null);
       
-      return { error: null };
-    } catch (error: unknown) {
-      console.error('サインアウトエラー:', error);
-      const message = error instanceof Error ? error.message : 'ログアウト中にエラーが発生しました。';
-      return { error: { message } };
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
+      
+      console.log('ログアウト成功');
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
     }
   };
 
-  // 出席番号からユーザーを検索する関数（課題割り当て用）
+  // 出席番号からユーザーを検索
   const getUserByStudentId = async (studentId: string) => {
     try {
-      // .single()メソッドを削除し、配列として結果を取得
       const { data, error } = await supabase
         .from('users')
         .select('id, email, student_id, name')
         .eq('student_id', studentId);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching user by student ID:', error);
+        return null;
+      }
       
-      // データが存在しない場合
-      if (!data || data.length === 0) {
-        return { 
-          error: { message: '指定された出席番号のユーザーが見つかりません' },
-          user: null
+      if (data && data.length > 0) {
+        const userData = data[0];
+        return {
+          id: userData.id,
+          email: userData.email,
+          name: userData.name || userData.email,
+          studentId: userData.student_id
         };
       }
       
-      // 最初のユーザーを返す
-      return { 
-        error: null,
-        user: {
-          id: data[0].id,
-          email: data[0].email,
-          name: data[0].name || data[0].email,
-          studentId: data[0].student_id
-        }
-      };
-    } catch (error: unknown) {
-      console.error('ユーザー検索エラー:', error);
-      const message = error instanceof Error ? error.message : 'ユーザーの検索中にエラーが発生しました';
-      return { 
-        error: { message },
-        user: null
-      };
+      return null;
+    } catch (error) {
+      console.error('Error in getUserByStudentId:', error);
+      return null;
+    }
+  };
+
+  // 複数の出席番号から複数のユーザーを取得
+  const getUsersByStudentIds = async (studentIds: string[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, student_id, name')
+        .in('student_id', studentIds);
+      
+      if (error) {
+        console.error('Error fetching users by student IDs:', error);
+        return [];
+      }
+      
+      return data?.map(userData => ({
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || userData.email,
+        studentId: userData.student_id
+      })) || [];
+    } catch (error) {
+      console.error('Error in getUsersByStudentIds:', error);
+      return [];
     }
   };
 
   return { 
     user, 
     loading, 
-    signUp,
     signIn, 
+    signUp, 
     signOut,
     updateStudentId,
-    getUserByStudentId
+    getUserByStudentId,
+    getUsersByStudentIds,
+    checkAndRefreshToken
   };
 };
